@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐱 CAT STUDIO ULTIMATE</title>
+    <style>
+        :root { --primary: #00e5ff; --bg: #0a0a0a; --card: #161616; --text: #eee; --accent: #ff9800; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 30px; }
+        
+        /* UI COMPONENTS */
+        .container { padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding: 10px 15px; background: #000; position: sticky; top: 0; z-index: 100; }
+        .tab-nav { display: flex; background: #111; padding: 5px; position: sticky; top: 55px; z-index: 90; gap: 5px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: #666; font-weight: bold; font-size: 0.8rem; border-radius: 8px; }
+        .tab-btn.active { background: var(--primary); color: black; }
+        
+        .section { display: none; padding-top: 15px; animation: fadeIn 0.3s; }
+        .section.active { display: block; }
+
+        .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        label { color: var(--primary); font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 5px; }
+        
+        input, textarea, select { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; box-sizing: border-box; font-size: 1rem; margin-bottom: 10px; }
+        
+        /* TOGGLE STYLES */
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #222; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        .switch { position: relative; display: inline-block; width: 45px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(21px); }
+
+        /* BUTTONS */
+        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        .btn-primary { background: linear-gradient(90deg, var(--primary), #007bff); color: black; }
+        .btn-orange { background: var(--accent); color: black; }
+        .btn-outline { background: transparent; border: 1px solid #444; color: #ccc; }
+        .btn:disabled { opacity: 0.4; }
+
+        /* CHARACTER CARD */
+        .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .char-card { background: #000; border-radius: 8px; padding: 10px; border: 1px solid #333; text-align: center; }
+        .char-img { width: 100%; aspect-ratio: 1/1; border-radius: 5px; object-fit: cover; background: #111; margin-bottom: 8px; display: block; }
+        
+        /* SCENE CARD */
+        .scene-card { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+        .motion-prompt { background: #002b36; color: #00e5ff; padding: 10px; border-radius: 5px; font-size: 0.8rem; font-style: italic; border-left: 3px solid var(--primary); margin-top: 10px; }
+
+        .loading-ring { text-align: center; padding: 20px; color: var(--primary); font-style: italic; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 onclick="location.reload()">🐱 CAT STUDIO</h1>
+        <button onclick="toggleSettings()" style="background:none; border:none; font-size:1.5rem;">⚙️</button>
+    </div>
+
+    <!-- SETTINGS PANEL -->
+    <div id="settings" class="container" style="display:none; background:#111; border-bottom:1px solid #333;">
+        <label>Pollinations API Key (pk_...)</label>
+        <input type="text" id="pollinationsKey" onchange="saveKeys()">
+        <label>ImgBB API Key</label>
+        <input type="text" id="imgbbKey" onchange="saveKeys()">
+        <button class="btn btn-outline" onclick="toggleSettings()">Tutup Pengaturan</button>
+    </div>
+
+    <div class="tab-nav">
+        <button class="tab-btn active" id="btn1">1. CERITA</button>
+        <button class="tab-btn" id="btn2">2. TOKOH</button>
+        <button class="tab-btn" id="btn3">3. SCENE</button>
+        <button class="tab-btn" id="btn4">4. RENDER</button>
+    </div>
+
+    <div class="container">
+
+        <!-- TAB 1: KONSEP -->
+        <div id="tab1" class="section active">
+            <div class="card">
+                <label>Gaya Cerita:</label>
+                <div class="toggle-container">
+                    <span>Gunakan Dialog (Suara)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="useDialog">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label>Ide Cerita Kasar:</label>
+                <textarea id="storyIdea" rows="5" placeholder="Contoh: Kucing calico ibu guru yang sabar menghadapi murid kucing oren yang nakal..."></textarea>
+                <button class="btn btn-primary" onclick="processStory()">NEXT: BUAT CERITA & KE TOKOH ➔</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: TOKOH & STYLE -->
+        <div id="tab2" class="section">
+            <div class="card">
+                <label>📖 Hasil Cerita (Claude):</label>
+                <div id="storyDisplay" style="font-size: 0.9rem; line-height: 1.5; color: #ccc; margin-bottom: 15px;"></div>
+                
+                <label>🎨 Referensi Art Style (Upload):</label>
+                <input type="file" id="styleUpload" accept="image/*" onchange="uploadStyle()">
+                <div id="styleStatus" style="font-size:0.7rem; color: #888;">Belum ada style referensi.</div>
+                <input type="hidden" id="masterStyleUrl">
+                <input type="hidden" id="styleDescription">
+            </div>
+
+            <label>👥 Daftar Tokoh Terdeteksi:</label>
+            <div class="char-grid" id="charGrid">
+                <!-- Diisi otomatis oleh GPT-4o -->
+            </div>
+
+            <div class="card" style="background: #222;">
+                <label>Mode Kualitas Gambar:</label>
+                <div class="toggle-container">
+                    <span>Sultan Mode (Seedream Pro - 0.04)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="imgQuality">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p style="font-size:0.7rem; color:#888;">*Matikan saklar untuk mode Hemat (Flux - Free).</p>
+            </div>
+
+            <button class="btn btn-primary" id="btnNextTo3" disabled onclick="processScenes()">NEXT: PECAH SCENE ➔</button>
+        </div>
+
+        <!-- TAB 3: SCENE BREAKDOWN -->
+        <div id="tab3" class="section">
+            <div id="scenesList">
+                <!-- Diisi otomatis oleh GPT-4o -->
+            </div>
+            <button class="btn btn-primary" onclick="showTab(4)">NEXT: RENDER AKHIR ➔</button>
+        </div>
+
+        <!-- TAB 4: PRODUCTION -->
+        <div id="tab4" class="section">
+            <div id="finalProduction">
+                <!-- Hasil Render Akhir -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let state = {
+            pollinationsKey: '',
+            imgbbKey: '',
+            story: '',
+            characters: [], // { name: '', desc: '', imgUrl: '' }
+            scenes: [],
+            masterStyleDesc: '3D animation style, Pixar style, cinematic lighting, highly detailed',
+            sessionSeed: Math.floor(Math.random() * 999999)
+        };
+
+        // --- CORE FUNCTIONS ---
+
+        function showTab(n) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab' + n).classList.add('active');
+            document.getElementById('btn' + n).classList.add('active');
+        }
+
+        async function processStory() {
+            const idea = document.getElementById('storyIdea').value;
+            const dialogOn = document.getElementById('useDialog').checked;
+            if (!idea) return alert("Isi ide ceritanya dulu bro!");
+
+            showTab(2);
+            document.getElementById('storyDisplay').innerHTML = "<div class='loading-ring'>Claude sedang menulis cerita...</div>";
+
+            try {
+                // 1. Generate Story (Claude)
+                const storyResponse = await callAI('claude', `Tuliskan cerita pendek berdasarkan ide: ${idea}. Mode: ${dialogOn ? 'Dengan Dialog' : 'Tanpa Dialog/Narasi Visual'}. Bahasa Indonesia yang natural dan menyentuh.`);
+                state.story = storyResponse;
+                document.getElementById('storyDisplay').innerText = state.story;
+
+                // 2. Detect Characters (GPT-4o)
+                const charResponse = await callAI('openai', `Dari cerita ini, list siapa saja karakter utamanya. Berikan output dalam format JSON array: [{"name": "Nama", "base_desc": "Deskripsi fisik singkat"}] \n\nCerita: ${state.story}`);
+                state.characters = JSON.parse(charResponse.replace(/```json|```/g, ''));
+                
+                renderCharCards();
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        }
+
+        async function uploadStyle() {
+            const file = document.getElementById('styleUpload').files[0];
+            const status = document.getElementById('styleStatus');
+            if (!file) return;
+
+            status.innerText = "⏳ Uploading style reference...";
+            const url = await uploadToImgBB(file);
+            state.masterStyleUrl = url;
+
+            // Minta GPT analisa stylenya
+            status.innerText = "👁️ AI menganalisa art style...";
+            const styleDesc = await callVision(url, "Describe the art style, lighting, and rendering of this image for an AI prompt. Focus on the art style only, ignore the subject.");
+            state.masterStyleDesc = styleDesc;
+            status.innerText = "✅ Style dikunci: " + styleDesc.substring(0, 50) + "...";
+        }
+
+        function renderCharCards() {
+            const grid = document.getElementById('charGrid');
+            grid.innerHTML = "";
+            state.characters.forEach((char, i) => {
+                const card = document.createElement('div');
+                card.className = 'char-card';
+                card.innerHTML = `
+                    <img id="charImg-${i}" class="char-img" src="">
+                    <label style="font-size:0.7rem;">${char.name}</label>
+                    <button class="btn btn-outline" style="font-size:0.6rem; padding:5px;" onclick="genCharRef(${i})">Generate Ref</button>
+                `;
+                grid.appendChild(card);
+            });
+            document.getElementById('btnNextTo3').disabled = false;
+        }
+
+        async function genCharRef(i) {
+            const char = state.characters[i];
+            const isPro = document.getElementById('imgQuality').checked;
+            const model = isPro ? 'seedream-pro' : 'flux';
+            const imgTag = document.getElementById(`charImg-${i}`);
+            
+            const prompt = `${state.masterStyleDesc}. Full body character sheet of ${char.name}, ${char.base_desc}, standing straight, front view, neutral expression, white background, humanoid cat, 3d render.`;
+            
+            imgTag.style.opacity = "0.3";
+            const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1024&height=1024&nologo=true&apiKey=${state.pollinationsKey}`;
+            
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${state.pollinationsKey}` } });
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            state.characters[i].imgUrl = objUrl; // Simpan untuk referensi tab 3
+            imgTag.src = objUrl;
+            imgTag.style.opacity = "1";
+        }
+
+        async function processScenes() {
+            showTab(3);
+            const list = document.getElementById('scenesList');
+            list.innerHTML = "<div class='loading-ring'>GPT-4o sedang memecah scene...</div>";
+
+            try {
+                const res = await callAI('openai', `Pecah cerita ini menjadi tepat 8 scene visual. Berikan output JSON array: [{"scene": 1, "text": "Narasi", "visual": "Deskripsi aksi detail untuk prompt gambar", "motion": "Instruksi gerakan kamera/karakter untuk video"}] \n\nCerita: ${state.story}`);
+                state.scenes = JSON.parse(res.replace(/```json|```/g, ''));
+                
+                list.innerHTML = "";
+                state.scenes.forEach((s, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'card scene-card';
+                    div.innerHTML = `
+                        <label>SCENE ${s.scene}</label>
+                        <p style="font-size:0.8rem;">${s.text}</p>
+                        <button class="btn btn-orange" onclick="renderScene(${i})">Render Scene</button>
+                        <div id="sceneContainer-${i}"></div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { alert(e.message); }
+        }
+
+        async function renderScene(i) {
+            const s = state.scenes[i];
+            const container = document.getElementById(`sceneContainer-${i}`);
+            const isPro = document.getElementById('imgQuality').checked;
+            const model = isPro ? 'seedream-pro' : 'flux';
+
+            container.innerHTML = "⏳ Rendering...";
+            
+            // Ambil deskripsi tokoh yang ada di scene ini
+            const charContext = state.characters.map(c => `${c.name} is ${c.base_desc}`).join(". ");
+            const prompt = `${state.masterStyleDesc}. ${charContext}. Scene: ${s.visual}. Cinematic, high quality.`;
+            
+            // Jika ada foto referensi karakter utama, kita selipkan link-nya (Img2Img logic)
+            const mainCharImg = state.characters[0]?.imgUrl || ""; 
+            
+            let url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1280&height=720&nologo=true&apiKey=${state.pollinationsKey}`;
+            if(mainCharImg) url += `&image=${encodeURIComponent(mainCharImg)}`;
+
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${state.pollinationsKey}` } });
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            
+            container.innerHTML = `
+                <img src="${objUrl}" style="width:100%; border-radius:8px; margin-top:10px;">
+                <div class="motion-prompt">🎬 Video Motion: ${s.motion}</div>
+            `;
+        }
+
+        // --- API HELPERS ---
+
+        async function callAI(model, prompt) {
+            const key = state.pollinationsKey;
+            const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }]
+                })
+            });
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+
+        async function callVision(imgUrl, prompt) {
+            const key = state.pollinationsKey;
+            const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: "openai",
+                    messages: [{
+                        role: "user",
+                        content: [
+                            { type: "text", text: prompt },
+                            { type: "image_url", image_url: { url: imgUrl } }
+                        ]
+                    }]
+                })
+            });
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+
+        async function uploadToImgBB(file) {
+            const key = state.imgbbKey;
+            const formData = new FormData();
+            formData.append("image", file);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, { method: "POST", body: formData });
+            const data = await res.json();
+            return data.data.url;
+        }
+
+        function saveKeys() {
+            state.pollinationsKey = document.getElementById('pollinationsKey').value;
+            state.imgbbKey = document.getElementById('imgbbKey').value;
+            localStorage.setItem("p_key", state.pollinationsKey);
+            localStorage.setItem("i_key", state.imgbbKey);
+        }
+
+        function toggleSettings() {
+            const s = document.getElementById('settings');
+            s.style.display = s.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Load saved keys
+        state.pollinationsKey = localStorage.getItem("p_key") || '';
+        state.imgbbKey = localStorage.getItem("i_key") || '';
+        document.getElementById('pollinationsKey').value = state.pollinationsKey;
+        document.getElementById('imgbbKey').value = state.imgbbKey;
+
+    </script>
+</body>
+</html>
