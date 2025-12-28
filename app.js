@@ -41,38 +41,77 @@ function saveKeys() {
 }
 
 // --- CORE API CALL ---
-async function callAI(model, prompt) {
-    const url = 'https://gen.pollinations.ai/v1/chat/completions';
+async function callAI(model, prompt, opts = {}) {
+  const url = 'https://gen.pollinations.ai/v1/chat/completions';
+  const maxRetries = opts.maxRetries ?? 3;
+  const baseDelay = opts.baseDelay ?? 800; // ms
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
     try {
-        console.log('callAI', { model, prompt });
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${state.pKey}` 
-            },
-            body: JSON.stringify({ model: model, messages: [{ role: 'user', content: prompt }] })
-        });
-        const text = await res.text();
-        if (!res.ok) {
-            console.error('AI HTTP error', res.status, text);
-            throw new Error(`HTTP ${res.status}: ${text}`);
+      console.log(`callAI attempt ${attempt}`, { model, prompt });
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.pKey}`
+        },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+      });
+
+      const text = await res.text();
+      // try parse body as json for better error messages
+      let parsedBody;
+      try { parsedBody = JSON.parse(text); } catch(e) { parsedBody = null; }
+
+      if (!res.ok) {
+        // handle rate limit / server errors specially
+        if (res.status === 429 || (parsedBody && parsedBody.error && parsedBody.error.code === 'RATE_LIMIT')) {
+          const msg = `Rate limit / quota exceeded (HTTP ${res.status}).`;
+          console.warn('AI rate limit:', parsedBody || text);
+          if (attempt <= maxRetries) {
+            const jitter = Math.floor(Math.random() * 300);
+            const wait = baseDelay * Math.pow(2, attempt - 1) + jitter;
+            console.log(`Retrying in ${wait}ms (attempt ${attempt}/${maxRetries})`);
+            await new Promise(r => setTimeout(r, wait));
+            continue;
+          }
+          throw new Error(msg + ' Please check your API key / quota or try again later.');
         }
-        let data;
-        try { data = JSON.parse(text); } catch (e) { data = text; }
-        console.log('AI raw response', data);
-        if (data && data.choices && data.choices.length > 0) {
-            const choice = data.choices[0];
-            if (choice.message && choice.message.content) return choice.message.content;
-            if (choice.text) return choice.text;
+
+        // server error (5xx)
+        if (res.status >= 500 && attempt <= maxRetries) {
+          const wait = baseDelay * Math.pow(2, attempt - 1);
+          console.warn('Server error, will retry', res.status, parsedBody || text);
+          await new Promise(r => setTimeout(r, wait));
+          continue;
         }
-        if (typeof data === 'string') return data;
-        if (data && data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-        throw new Error("AI Error: No choices returned");
+
+        // non-retriable: surface provider message if available
+        const providerMsg = parsedBody?.error?.message || text || `HTTP ${res.status}`;
+        throw new Error(`AI Provider Error: ${providerMsg}`);
+      }
+
+      // success path
+      let data;
+      try { data = JSON.parse(text); } catch (e) { data = text; }
+      console.log('AI response', data);
+      if (data && data.choices && data.choices.length > 0) {
+        const choice = data.choices[0];
+        if (choice.message && choice.message.content) return choice.message.content;
+        if (choice.text) return choice.text;
+      }
+      if (typeof data === 'string') return data;
+      if (data && data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      throw new Error('AI Error: No choices returned');
     } catch (err) {
-        console.error("callAI error:", err);
-        throw err;
+      console.error('callAI error on attempt', attempt, err);
+      if (attempt >= maxRetries) throw err;
+      // otherwise loop and retry (catch above handles waiting); if error thrown here not handled above, wait a bit
+      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt - 1)));
     }
+  }
 }
 
 // Wrapper used by the button in index.html
