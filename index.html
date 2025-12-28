@@ -9,24 +9,25 @@
 </head>
 <body>
 
-    <div class="brand-header">
+    <header class="brand-header">
         <div class="logo-wrapper">
             <img src="logo.png" alt="Logo" class="app-icon-top">
             <h1 class="logo-mrg">MrG</h1>
         </div>
         <p class="tagline">PROFESSIONAL AI PRODUCTION</p>
-    </div>
+        <button class="btn-settings" onclick="toggleSettings()" title="Settings ⚙️">⚙️</button>
+    </header>
 
-    <div class="nav-bar">
+    <nav class="nav-bar">
         <div class="nav-item active" id="nav1" onclick="showTab(1)">1. Story</div>
         <div class="nav-item" id="nav2" onclick="showTab(2)">2. Casting</div>
         <div class="nav-item" id="nav3" onclick="showTab(3)">3. Scenes</div>
         <div class="nav-item" id="nav4" onclick="showTab(4)">4. Render</div>
-    </div>
+    </nav>
 
-    <div class="container">
+    <main class="container">
         <!-- TAB 1: STORY -->
-        <div id="tab1" class="tab-content active">
+        <section id="tab1" class="tab-content active">
             <div class="card">
                 <label class="neon-label">CONCEPT IDEA</label>
                 <div class="toggle-container">
@@ -36,28 +37,39 @@
                         <span class="slider"></span>
                     </label>
                 </div>
+
                 <textarea id="storyIdea" rows="5" placeholder="Masukkan ide cerita kasar lu..."></textarea>
-                <button class="btn-neon" onclick="generateStory()">Generate Master Script</button>
+
+                <div class="row">
+                    <button class="btn-neon" onclick="generateStory()">Generate Master Script</button>
+                    <button class="btn-secondary" id="nextToCasting" onclick="showTab(2)" style="display:none;">Next: Casting →</button>
+                </div>
+
                 <div id="status1" class="status-msg"></div>
             </div>
+
             <div id="storyResult" class="card" style="display:none;">
                 <label>MASTER SCRIPT (Claude)</label>
                 <div id="storyText" class="output-text"></div>
+                <div class="row" style="margin-top:8px;">
+                    <button class="btn-copy" onclick="navigator.clipboard.writeText(document.getElementById('storyText').innerText)">Copy Script</button>
+                    <button class="btn-neon" onclick="showTab(2)">Next: Go to Casting</button>
+                </div>
             </div>
-        </div>
+        </section>
 
         <!-- TAB 2: CASTING -->
-        <div id="tab2" class="tab-content" style="display:none;">
+        <section id="tab2" class="tab-content" style="display:none;">
             <div class="card">
                 <label class="neon-label">ART STYLE REFERENCE</label>
                 <div class="input-group-row">
-                    <input type="file" id="styleFile" onchange="handleStyleSource('file')">
-                    <p style="text-align:center; margin:5px 0; font-size:0.7rem;">— ATAU —</p>
+                    <input type="file" id="styleFile" accept="image/*" onchange="handleStyleSource('file')">
+                    <div style="text-align:center; margin:5px 0; font-size:0.7rem;">— ATAU —</div>
                     <input type="text" id="styleUrl" placeholder="Paste Link Gambar Style (https://...)" onchange="handleStyleSource('url')">
                 </div>
                 <p id="styleStatus" class="status-msg">Belum ada style referensi.</p>
             </div>
-            
+
             <div class="card mode-card">
                 <div class="toggle-container">
                     <span>Mode Seedream PRO (4K)</span>
@@ -69,45 +81,65 @@
             </div>
 
             <div class="card">
-                <label class="neon-label">CHARACTER CASTING</label>
-                <div id="charGrid" class="char-grid-container">
-                    <p class="placeholder-text">Buat cerita dulu di Tab 1...</p>
+                <label class="neon-label">CHARACTER BANK</label>
+                <div id="charGrid" class="char-grid">
+                    <!-- Character cards injected here by JS -->
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="btn-neon" onclick="processScenes()">Next: Direct to Scenes (AI)</button>
                 </div>
             </div>
-            <button class="btn-neon" onclick="processScenes()">Next: Pecah Scene ➔</button>
-        </div>
+        </section>
 
-        <!-- TAB 3: SCENES -->
-        <div id="tab3" class="tab-content" style="display:none;">
-            <div id="sceneStatus" class="status-msg"></div>
-            <div id="scenesContainer"></div>
-            <button class="btn-neon" onclick="showTab(4)" style="margin: 15px;">Next: Render Akhir ➔</button>
-        </div>
-
-        <!-- TAB 4: RENDER -->
-        <div id="tab4" class="tab-content" style="display:none;">
-            <div id="renderContainer"></div>
-            <div class="card" style="text-align:center;">
-                <button class="btn-copy" onclick="downloadJSON()">Download Project JSON</button>
+        <!-- TAB 3: SCENES & SFX -->
+        <section id="tab3" class="tab-content" style="display:none;">
+            <div class="card">
+                <label class="neon-label">SCENES (AI DIRECTOR)</label>
+                <div style="margin-bottom:8px;">
+                    <button class="btn-neon" onclick="processScenes()">Generate 8 Scenes + SFX</button>
+                    <button class="btn-secondary" onclick="showTab(4)">Skip → Show Production</button>
+                </div>
+                <div id="scenesList" class="scenes-list">
+                    <!-- Scenes injected here by JS -->
+                </div>
             </div>
+        </section>
+
+        <!-- TAB 4: RENDER & PROMPTS -->
+        <section id="tab4" class="tab-content" style="display:none;">
+            <div class="card">
+                <label class="neon-label">RENDER & PRODUCTION</label>
+                <div id="finalProduction">
+                    <h2 style="text-align:center; color:var(--primary);">PRODUCTION SUMMARY</h2>
+                    <!-- Populated by updateFinalTab() -->
+                </div>
+                <div style="margin-top:10px;">
+                    <button class="btn-copy" onclick="downloadProjectJSON()">Download Project JSON</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="modal" style="display:none;">
+        <div class="modal-card">
+            <h3>MrG Settings</h3>
+            <label>Pollinations API Key</label>
+            <input id="pKey" type="text" placeholder="Bearer key...">
+            <label>ImgBB API Key (optional for file upload)</label>
+            <input id="iKey" type="text" placeholder="ImgBB key">
+            <div style="margin-top:10px;">
+                <button class="btn-neon" onclick="saveKeys()">Save Keys</button>
+                <button class="btn-secondary" onclick="toggleSettings()">Close</button>
+            </div>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:10px;">Kunci disimpan di localStorage pada device Anda.</p>
         </div>
     </div>
 
-    <!-- Floating Settings -->
-    <div class="floating-settings">
-        <button onclick="toggleSettings()" class="gear-btn">⚙️</button>
-    </div>
-
-    <div id="settingsModal" class="settings-modal">
-        <div class="card">
-            <label>Pollinations Key (pk_...)</label>
-            <input type="text" id="pKey">
-            <label style="margin-top:10px;">ImgBB API Key</label>
-            <input type="text" id="iKey">
-            <button class="btn-neon" onclick="saveKeys()" style="margin-top:15px;">Save Settings</button>
-        </div>
-    </div>
+    <footer class="app-footer">
+        <small>MrG — AI Production Suite</small>
+    </footer>
 
     <script src="app.js"></script>
 </body>
-    </html>
+</html>
