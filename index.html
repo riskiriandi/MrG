@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MrG - AI Production Suite</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&display=swap" rel="stylesheet">
@@ -11,14 +11,14 @@
 
     <div class="brand-header">
         <h1 class="logo-mrg">MrG</h1>
-        <p style="color: #555; font-size: 0.7rem;">PROFESSIONAL AI STORYBOARD</p>
+        <p style="color: #555; font-size: 0.7rem; letter-spacing: 2px;">PROFESSIONAL AI PRODUCTION</p>
     </div>
 
     <div class="nav-bar">
-        <div class="nav-item active" onclick="showTab(1)">1. Story</div>
-        <div class="nav-item" onclick="showTab(2)">2. Casting</div>
-        <div class="nav-item" onclick="showTab(3)">3. Scenes</div>
-        <div class="nav-item" onclick="showTab(4)">4. Render</div>
+        <div class="nav-item active" id="nav1" onclick="showTab(1)">1. Story</div>
+        <div class="nav-item" id="nav2" onclick="showTab(2)">2. Casting</div>
+        <div class="nav-item" id="nav3" onclick="showTab(3)">3. Scenes</div>
+        <div class="nav-item" id="nav4" onclick="showTab(4)">4. Render</div>
     </div>
 
     <div class="container">
@@ -26,15 +26,20 @@
         <div id="tab1" class="tab-content active">
             <div class="card">
                 <label style="color: var(--primary);">CONCEPT IDEA</label>
-                <textarea id="storyIdea" rows="5" placeholder="Enter your raw idea here..."></textarea>
-                <div style="margin: 10px 0;">
-                    <input type="checkbox" id="useDialog"> <span style="font-size: 0.8rem;">Enable Dialogs</span>
+                <div class="toggle-container">
+                    <span style="font-size: 0.8rem;">Gunakan Dialog</span>
+                    <label class="switch">
+                        <input type="checkbox" id="useDialog">
+                        <span class="slider"></span>
+                    </label>
                 </div>
+                <textarea id="storyIdea" rows="5" placeholder="Masukkan ide cerita kasar lu di sini..."></textarea>
                 <button class="btn-neon" onclick="generateStory()">Generate Master Script</button>
+                <div id="status1" class="status-msg"></div>
             </div>
             <div id="storyResult" class="card" style="display:none;">
-                <label>MASTER SCRIPT</label>
-                <div id="storyText" style="font-size: 0.9rem; color: #ccc;"></div>
+                <label>MASTER SCRIPT (Claude)</label>
+                <div id="storyText" style="font-size: 0.9rem; color: #ccc; line-height: 1.6;"></div>
             </div>
         </div>
 
@@ -43,37 +48,56 @@
             <div class="card">
                 <label>ART STYLE REFERENCE</label>
                 <input type="file" id="styleFile" onchange="uploadStyle()">
-                <p id="styleStatus" style="font-size: 0.7rem; color: var(--accent);"></p>
+                <p id="styleStatus" style="font-size: 0.7rem; color: var(--accent); margin-top: 5px;">Belum ada style referensi.</p>
             </div>
-            <div id="charList" class="card">
-                <label>CHARACTER CASTING</label>
-                <div id="charGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+            
+            <div class="card" style="background: rgba(0,0,0,0.3);">
+                <div class="toggle-container">
+                    <span>Mode Seedream PRO (4K)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="imgQuality" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p style="font-size:0.6rem; color:#666;">*OFF = Seedream Biasa | ON = Seedream Pro</p>
             </div>
+
+            <div class="card">
+                <label>CHARACTER CASTING (Auto-Detect)</label>
+                <div id="charGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <p style="color:#444; font-size:0.8rem;">Buat cerita dulu di Tab 1...</p>
+                </div>
+            </div>
+            <button class="btn-neon" onclick="processScenes()">Next: Pecah Scene ➔</button>
         </div>
 
         <!-- TAB 3: SCENES -->
         <div id="tab3" class="tab-content" style="display:none;">
-            <div id="sceneStatus" style="text-align:center; padding:20px;"></div>
+            <div id="sceneStatus" class="status-msg"></div>
             <div id="scenesContainer"></div>
+            <button class="btn-neon" onclick="showTab(4)" style="margin: 15px;">Next: Render Akhir ➔</button>
         </div>
 
         <!-- TAB 4: RENDER -->
         <div id="tab4" class="tab-content" style="display:none;">
             <div id="renderContainer"></div>
+            <div class="card" style="text-align:center;">
+                <button class="btn-copy" onclick="downloadJSON()">Download Project JSON</button>
+            </div>
         </div>
     </div>
 
     <!-- Floating Settings -->
-    <div style="position: fixed; bottom: 20px; right: 20px;">
-        <button onclick="toggleSettings()" style="background: #222; border: 1px solid var(--primary); color: white; border-radius: 50%; width: 50px; height: 50px;">⚙️</button>
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 3000;">
+        <button onclick="toggleSettings()" style="background: #111; border: 1px solid var(--primary); color: white; border-radius: 50%; width: 50px; height: 50px; box-shadow: 0 0 15px var(--primary);">⚙️</button>
     </div>
 
-    <div id="settingsModal" class="card" style="display:none; position: fixed; bottom: 80px; right: 20px; z-index: 2000; width: 250px;">
-        <label>Pollinations Key</label>
-        <input type="text" id="pKey" style="width:100%; background:#000; color:#fff; border:1px solid #444;">
-        <label>ImgBB Key</label>
-        <input type="text" id="iKey" style="width:100%; background:#000; color:#fff; border:1px solid #444;">
-        <button class="btn-neon" onclick="saveKeys()" style="margin-top:10px;">Save</button>
+    <div id="settingsModal" class="card" style="display:none; position: fixed; bottom: 80px; right: 20px; z-index: 3000; width: 260px; background: #111; border: 1px solid var(--primary);">
+        <label>Pollinations Key (pk_...)</label>
+        <input type="text" id="pKey" style="width:100%; background:#000; color:#fff; border:1px solid #444; padding:8px; border-radius:5px;">
+        <label style="margin-top:10px;">ImgBB API Key</label>
+        <input type="text" id="iKey" style="width:100%; background:#000; color:#fff; border:1px solid #444; padding:8px; border-radius:5px;">
+        <button class="btn-neon" onclick="saveKeys()" style="margin-top:15px; padding:10px;">Save Settings</button>
     </div>
 
     <script src="app.js"></script>
