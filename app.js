@@ -81,38 +81,59 @@ async function generateStory() {
 
 async function detectChars() {
     const grid = document.getElementById('charGrid');
-    grid.innerHTML = "<p style='color:var(--primary); font-size:0.7rem;'>🔍 Detecting characters...</p>";
+    grid.innerHTML = "<p style='color:var(--primary); font-size:0.7rem;'>🔍 MrG is analyzing characters...</p>";
 
     try {
-        const prompt = `List main characters from this story. Output JSON array only: [{"name": "Name", "desc": "Physical description"}] \n\nStory: ${state.story}`;
+        // Instruksi lebih ketat agar AI tidak curhat
+        const prompt = `Identify the main characters from this story. 
+        Return ONLY a JSON array of objects with "name" and "desc" keys. 
+        Example: [{"name": "Budi", "desc": "kucing oren gemuk"}]
+        STORY: ${state.story}`;
+
         const data = await safeFetch('https://gen.pollinations.ai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${state.pKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'openai', messages: [{role: 'user', content: prompt}] })
+            body: JSON.stringify({ 
+                model: 'openai', 
+                messages: [{role: 'user', content: prompt}],
+                temperature: 0.2 // Rendah agar AI tidak ngawur
+            })
         });
 
-        const rawContent = data.choices[0].message.content;
-        // REGEX UNTUK MENCARI ARRAY JSON [ ... ]
-        const jsonMatch = rawContent.match(/\[.*\]/s);
-        if (!jsonMatch) throw new Error("AI did not return a valid character list.");
+        let rawContent = data.choices[0].message.content.trim();
         
-        state.chars = JSON.parse(jsonMatch[0]);
+        // PEMBERSIH SUPER: Mencari karakter '[' pertama dan ']' terakhir
+        const startIdx = rawContent.indexOf('[');
+        const endIdx = rawContent.lastIndexOf(']');
         
+        if (startIdx === -1 || endIdx === -1) {
+            throw new Error("AI tidak mengirim format daftar tokoh yang benar.");
+        }
+        
+        const jsonString = rawContent.substring(startIdx, endIdx + 1);
+        state.chars = JSON.parse(jsonString);
+        
+        // Render ke UI
         grid.innerHTML = '';
         state.chars.forEach((c, i) => {
             grid.innerHTML += `
                 <div class="card" style="margin:5px; padding:10px; text-align:center; background:#000; border:1px solid #222;">
-                    <img id="charImg${i}" src="https://via.placeholder.com/150?text=No+Ref" style="width:100%; border-radius:8px;">
-                    <p style="font-size:0.7rem; margin:5px 0; color:var(--primary);">${c.name}</p>
+                    <img id="charImg${i}" src="https://via.placeholder.com/150?text=No+Ref" style="width:100%; border-radius:8px; aspect-ratio:1/1; object-fit:cover;">
+                    <p style="font-size:0.7rem; margin:5px 0; color:var(--primary); font-weight:bold;">${c.name}</p>
                     <button class="btn-copy" onclick="genCharRef(${i})">Gen Ref</button>
                 </div>
             `;
         });
     } catch (e) {
-        grid.innerHTML = `<p style='color:red; font-size:0.7rem;'>Failed to detect characters: ${e.message}</p>`;
+        console.error("Detection Error:", e);
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align:center;">
+                <p style='color:red; font-size:0.7rem;'>Gagal deteksi otomatis.</p>
+                <button class="btn-copy" onclick="detectChars()">Coba Lagi 🔄</button>
+            </div>
+        `;
     }
 }
-
 async function handleStyleSource(type) {
     const status = document.getElementById('styleStatus');
     if (type === 'url') {
