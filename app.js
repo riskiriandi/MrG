@@ -8,363 +8,197 @@ let state = {
     sessionSeed: Math.floor(Math.random() * 999999)
 };
 
-// Load Keys (if elements exist)
+// Load Keys
 if (document.getElementById('pKey')) document.getElementById('pKey').value = state.pKey;
 if (document.getElementById('iKey')) document.getElementById('iKey').value = state.iKey;
 
 function showTab(n) {
     document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    const tab = document.getElementById('tab' + n);
-    const nav = document.getElementById('nav' + n);
-    if (tab) tab.style.display = 'block';
-    if (nav) nav.classList.add('active');
+    document.getElementById('tab' + n).style.display = 'block';
+    document.getElementById('nav' + n).classList.add('active');
     window.scrollTo(0,0);
 }
 
-function toggleSettings() {
-    const m = document.getElementById('settingsModal');
-    if (!m) return;
-    m.style.display = m.style.display === 'none' ? 'block' : 'none';
-}
-
-function saveKeys() {
-    const pEl = document.getElementById('pKey');
-    const iEl = document.getElementById('iKey');
-    if (!pEl || !iEl) return alert("Elements not found");
-    state.pKey = pEl.value.trim();
-    state.iKey = iEl.value.trim();
-    localStorage.setItem('pKey', state.pKey);
-    localStorage.setItem('iKey', state.iKey);
-    alert("MrG Settings Saved!");
-    toggleSettings();
-}
-
-// --- CORE API CALL ---
+// --- FUNGSI CALL AI (Pake Logika Retry Lu) ---
 async function callAI(model, prompt, opts = {}) {
-  const url = 'https://gen.pollinations.ai/v1/chat/completions';
-  const maxRetries = opts.maxRetries ?? 3;
-  const baseDelay = opts.baseDelay ?? 800; // ms
-  let attempt = 0;
-
-  while (true) {
-    attempt++;
-    try {
-      console.log(`callAI attempt ${attempt}`, { model, prompt });
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${state.pKey}`
-        },
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
-      });
-
-      const text = await res.text();
-      // try parse body as json for better error messages
-      let parsedBody;
-      try { parsedBody = JSON.parse(text); } catch(e) { parsedBody = null; }
-
-      if (!res.ok) {
-        // handle rate limit / server errors specially
-        if (res.status === 429 || (parsedBody && parsedBody.error && parsedBody.error.code === 'RATE_LIMIT')) {
-          const msg = `Rate limit / quota exceeded (HTTP ${res.status}).`;
-          console.warn('AI rate limit:', parsedBody || text);
-          if (attempt <= maxRetries) {
-            const jitter = Math.floor(Math.random() * 300);
-            const wait = baseDelay * Math.pow(2, attempt - 1) + jitter;
-            console.log(`Retrying in ${wait}ms (attempt ${attempt}/${maxRetries})`);
-            await new Promise(r => setTimeout(r, wait));
-            continue;
-          }
-          throw new Error(msg + ' Please check your API key / quota or try again later.');
-        }
-
-        // server error (5xx)
-        if (res.status >= 500 && attempt <= maxRetries) {
-          const wait = baseDelay * Math.pow(2, attempt - 1);
-          console.warn('Server error, will retry', res.status, parsedBody || text);
-          await new Promise(r => setTimeout(r, wait));
-          continue;
-        }
-
-        // non-retriable: surface provider message if available
-        const providerMsg = parsedBody?.error?.message || text || `HTTP ${res.status}`;
-        throw new Error(`AI Provider Error: ${providerMsg}`);
-      }
-
-      // success path
-      let data;
-      try { data = JSON.parse(text); } catch (e) { data = text; }
-      console.log('AI response', data);
-      if (data && data.choices && data.choices.length > 0) {
-        const choice = data.choices[0];
-        if (choice.message && choice.message.content) return choice.message.content;
-        if (choice.text) return choice.text;
-      }
-      if (typeof data === 'string') return data;
-      if (data && data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-      throw new Error('AI Error: No choices returned');
-    } catch (err) {
-      console.error('callAI error on attempt', attempt, err);
-      if (attempt >= maxRetries) throw err;
-      // otherwise loop and retry (catch above handles waiting); if error thrown here not handled above, wait a bit
-      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt - 1)));
-    }
-  }
-}
-
-// Wrapper used by the button in index.html
-async function generateStory() {
-    const genBtn = document.querySelector('#tab1 .btn-neon');
-    if (genBtn) genBtn.disabled = true;
-    try {
-        await processStory();
-    } finally {
-        if (genBtn) genBtn.disabled = false;
-    }
-}
-
-// --- TAB 1: STORY ---
-async function processStory() {
-    const ideaEl = document.getElementById('storyIdea');
-    const dialogOnEl = document.getElementById('useDialog');
-    const status = document.getElementById('status1');
-    const storyResult = document.getElementById('storyResult');
-    const storyText = document.getElementById('storyText');
-    if (!ideaEl) return alert("Text area not found");
-    const idea = ideaEl.value;
-    const dialogOn = dialogOnEl ? dialogOnEl.checked : false;
-    if (!idea) return alert("Isi ide dulu, Bro!");
-
-    status.innerText = "⏳ MrG is calling AI for the script...";
-    try {
-        state.story = await callAI('claude', `Tulis cerita pendek profesional: ${idea}. Mode: ${dialogOn ? 'Dialog' : 'Narasi Visual'}. Bahasa Indonesia.`);
-        if (storyText) storyText.innerText = state.story || '';
-        if (storyResult) storyResult.style.display = 'block';
-
-        status.innerText = "⏳ AI is detecting characters...";
-        const charPrompt = `List tokoh utama dari cerita ini. Output hanya sebuah JSON array. Setiap item berbentuk:{\"name\":\"Nama\",\"base_desc\":\"Deskripsi fisik singkat\"}. Jangan tambahan penjelasan. Cerita:\n${state.story}`;
-        const charRes = await callAI('openai', charPrompt);
-
-        const cleaned = (charRes || "").replace(/```json|```/g, "").trim();
-        let parsed = [];
+    const url = 'https://gen.pollinations.ai/v1/chat/completions';
+    const maxRetries = 3;
+    let attempt = 0;
+    while (attempt < maxRetries) {
+        attempt++;
         try {
-            parsed = JSON.parse(cleaned);
-            if (!Array.isArray(parsed)) throw new Error('Parsed not array');
-        } catch (e) {
-            console.warn('Character parse failed, trying substring parse', e);
-            const m = cleaned.match(/\[([\s\S]*?)\]/);
-            if (m) {
-                try { parsed = JSON.parse(m[0]); } catch (ee) { console.error('Second parse failed', ee); parsed = []; }
-            }
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.pKey}` },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return data.choices[0].message.content;
+        } catch (err) {
+            if (attempt === maxRetries) throw err;
+            await new Promise(r => setTimeout(r, 1000 * attempt));
         }
-
-        if (!parsed.length) {
-            status.innerText = "⚠️ AI returned no characters (fallback). Please edit story or add characters manually.";
-            state.characters = [];
-        } else {
-            state.characters = parsed;
-            renderCharCards();
-            status.innerText = "✅ Story & Characters Ready!";
-            // auto show tab2 but wait a bit so user sees status
-            setTimeout(() => showTab(2), 700);
-        }
-    } catch (e) {
-        console.error(e);
-        status.innerText = "❌ Error: " + (e.message || e);
-        alert("Error saat membuat story/karakter: " + (e.message || e));
     }
 }
 
-// --- TAB 2: STYLE & CHARS ---
-function handleStyleSource(type) {
-    // map inputs from index.html (styleFile/styleUrl) to handler
-    if (type === 'file') return handleStyle('file');
-    if (type === 'url') return handleStyle('url');
+// --- TAB 1: GENERATE STORY + AUTO DETECT ---
+async function generateStory() {
+    const idea = document.getElementById('storyIdea').value;
+    const dialogOn = document.getElementById('useDialog').checked;
+    const status = document.getElementById('status1');
+    if (!idea) return alert("Isi ide dulu!");
+
+    status.innerText = "⏳ MrG is writing story & detecting characters...";
+    try {
+        // 1. Generate Story
+        state.story = await callAI('claude', `Tulis cerita pendek profesional: ${idea}. Mode: ${dialogOn ? 'Dialog' : 'Narasi Visual'}. Bahasa Indonesia.`);
+        
+        // 2. Detect Characters (Langsung setelah cerita jadi)
+        const charPrompt = `Identify main characters. Return ONLY JSON array: [{"name":"Name","base_desc":"Physical description"}]. Story: ${state.story}`;
+        const charRes = await callAI('openai', charPrompt);
+        
+        const m = charRes.match(/\[([\s\S]*?)\]/);
+        state.characters = m ? JSON.parse(m[0]) : [];
+        
+        renderCharCards();
+        status.innerText = "✅ Done! Moving to Casting...";
+        setTimeout(() => showTab(2), 800);
+    } catch (e) { status.innerText = "❌ Error: " + e.message; }
 }
 
+// --- TAB 2: STYLE & CHARACTER PROMPTING ---
 async function handleStyle(type) {
     const status = document.getElementById('styleStatus');
-    if (!status) return;
     let url = "";
 
     if (type === 'url') {
-        const el = document.getElementById('styleUrl');
-        if (!el) return alert('styleUrl element not found');
-        url = el.value.trim();
-        if (!url) return alert('Masukkan URL gambar');
+        url = document.getElementById('styleUrl').value;
     } else {
-        const fileInput = document.getElementById('styleFile');
-        if (!fileInput) return alert('styleFile element not found');
-        const file = fileInput.files[0];
-        if (!file) return alert('Pilih file dulu');
-        status.innerText = "⏳ Uploading to ImgBB...";
-        try {
-            const formData = new FormData();
-            formData.append('image', file);
-            const res = await fetch(`https://api.imgbb.com/1/upload?key=${state.iKey}`, { method: 'POST', body: formData });
-            const data = await res.json();
-            if (!data || !data.data || !data.data.url) throw new Error('ImgBB upload failed');
-            url = data.data.url;
-        } catch (e) {
-            console.error('ImgBB error:', e);
-            status.innerText = '❌ Upload failed: ' + (e.message || e);
-            return;
-        }
+        const file = document.getElementById('styleFile').files[0];
+        if (!file) return;
+        status.innerText = "⏳ Uploading style...";
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${state.iKey}`, { method: 'POST', body: formData });
+        const data = await res.json();
+        url = data.data.url;
     }
 
-    status.innerText = '👁️ AI Analyzing Art Style...';
-    try {
-        const prompt = `Describe the art style, lighting, and rendering of this image in one concise sentence suitable for image-generation prompts. Respond only with a short descriptive sentence (no extra text).\nImage URL: ${url}`;
-        const resText = await callAI('openai', prompt);
-        const cleaned = (resText || '').replace(/```/g, '').trim();
-        if (cleaned) {
-            state.masterStyleDesc = cleaned;
-            status.innerText = '✅ Art Style Locked!';
-        } else {
-            status.innerText = '⚠️ Style analysis returned empty.';
-        }
-    } catch (e) {
-        console.error(e);
-        status.innerText = '❌ Style Analysis Failed: ' + (e.message || e);
-    }
+    status.innerText = "👁️ Analyzing Art Style...";
+    const visionPrompt = `Describe the art style, lighting, and rendering of this image in one concise sentence. Focus on the visual style only.`;
+    
+    // Pake Vision API
+    const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.pKey}` },
+        body: JSON.stringify({
+            model: "openai",
+            messages: [{ role: "user", content: [{ type: "text", text: visionPrompt }, { type: "image_url", image_url: { url: url } }] }]
+        })
+    });
+    const data = await res.json();
+    state.masterStyleDesc = data.choices[0].message.content;
+    status.innerText = "✅ Style Locked! Generating Character Prompts...";
+    
+    // OTOMATIS UPDATE SEMUA PROMPT KARAKTER
+    state.characters.forEach((char, i) => genCharRef(i));
 }
 
 function renderCharCards() {
     const grid = document.getElementById('charGrid');
-    if (!grid) return;
     grid.innerHTML = '';
     state.characters.forEach((char, i) => {
-        const card = document.createElement('div');
-        card.className = 'char-card';
-        const imgId = `charImg-${i}`;
-        card.innerHTML = `
-            <img id="${imgId}" class="char-img" src="${char.imgUrl || 'https://via.placeholder.com/150?text=No+Ref'}">
-            <label style="font-size:0.7rem; color:var(--primary);">${char.name}</label>
-            <button class="btn-neon" style="font-size:0.6rem; padding:5px; margin-top:5px;" onclick="genCharRef(${i})">Gen Ref</button>
+        grid.innerHTML += `
+            <div class="char-card">
+                <img id="charImg-${i}" class="char-img" src="https://via.placeholder.com/150?text=MrG">
+                <div class="char-name">${char.name}</div>
+                <button class="btn-neon" style="font-size:0.6rem; padding:5px;" onclick="genCharRef(${i})">Regen</button>
+            </div>
         `;
-        grid.appendChild(card);
     });
 }
 
 async function genCharRef(i) {
     const char = state.characters[i];
-    if (!char) return alert('Character not found');
-    const isPro = document.getElementById('imgQuality') ? document.getElementById('imgQuality').checked : false;
-    const model = isPro ? 'seedream-pro' : 'seedream';
     const imgTag = document.getElementById(`charImg-${i}`);
-    if (!imgTag) return alert('Image element not found');
+    imgTag.style.opacity = "0.3";
 
-    const prompt = `${state.masterStyleDesc}. Full body character sheet of ${char.name}, ${char.base_desc || ''}, standing straight, front view, neutral expression, white background, 3d render.`;
-    imgTag.style.opacity = '0.3';
-    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1024&height=1024&nologo=true`;
+    // ATURAN WAJIB: HUMANOID CAT (Kepala Kucing, Badan Manusia)
+    const humanoidRule = "Humanoid cat, anthropomorphic, cat head, human body structure, standing on two legs, wearing clothes, 3d render";
+    const prompt = `${state.masterStyleDesc}. ${humanoidRule}. Full body shot of ${char.name}, ${char.base_desc}, standing straight, front view, white background.`;
+    
+    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=seedream-pro&seed=${state.sessionSeed}&width=1024&height=1024&nologo=true`;
     imgTag.src = url;
-    imgTag.onload = () => { imgTag.style.opacity = '1'; state.characters[i].imgUrl = url; };
-    imgTag.onerror = () => { imgTag.style.opacity = '1'; alert('Image generation failed or blocked (CORS). Check console.'); console.error('Image URL failed:', url); };
+    imgTag.onload = () => { imgTag.style.opacity = "1"; state.characters[i].imgUrl = url; };
 }
 
 // --- TAB 3: SCENES & SFX ---
 async function processScenes() {
-    const list = document.getElementById('scenesList');
-    if (!list) return alert('scenesList element not found');
-    list.innerHTML = "<div class='status-msg'>⏳ AI is directing 8 scenes + SFX...</div>";
+    const container = document.getElementById('scenesContainer');
+    container.innerHTML = "⏳ MrG is directing scenes...";
     showTab(3);
 
+    const prompt = `Break story into 8 scenes. For each scene provide JSON: {"scene":1, "text":"narasi", "visual":"prompt gambar", "motion":"prompt video", "sfx":["rekomendasi sfx"]}. Story: ${state.story}`;
     try {
-        const prompt = `Pecah cerita berikut menjadi 8 scene visual. Untuk setiap scene berikan objek JSON dengan properti: \"scene\" (nomor), \"text\" (narasi singkat), \"visual\" (prompt deskriptif untuk gambar), \"motion\" (prompt untuk video/motion), \"sfx\" (array string rekomendasi efek suara). Output: hanya sebuah JSON array berisi 8 object. Cerita:\n\n${state.story}`;
-        const resText = await callAI('openai', prompt);
-
-        const cleaned = (resText || '').replace(/```json|```/g, '').trim();
-        let parsed = [];
-        try {
-            parsed = JSON.parse(cleaned);
-            if (!Array.isArray(parsed)) throw new Error('Parsed not array');
-        } catch (e) {
-            console.warn('Failed to parse scenes JSON automatically, trying to find JSON substring...', e);
-            const m = cleaned.match(/\[([\s\S]*?)\]/);
-            if (m) {
-                try { parsed = JSON.parse(m[0]); } catch (ee) { console.error('Second parse failed', ee); parsed = []; }
-            } else parsed = [];
-        }
-
-        if (!parsed.length) {
-            list.innerHTML = "<div class='status-msg'>❌ AI returned no scenes. Check story or API response (see console).</div>";
-            console.error('Scenes parse failed; raw response:', resText);
-            return;
-        }
-
-        state.scenes = parsed;
-        list.innerHTML = '';
+        const res = await callAI('openai', prompt);
+        const m = res.match(/\[([\s\S]*?)\]/);
+        state.scenes = JSON.parse(m[0]);
+        
+        container.innerHTML = '';
         state.scenes.forEach((s, i) => {
-            const div = document.createElement('div');
-            div.className = 'card neon-border';
-            div.innerHTML = `
-                <label>SCENE ${s.scene || (i+1)}</label>
-                <p style="font-size:0.8rem; color:#ccc;">${s.text || ''}</p>
-                <div class="sfx-container">${(s.sfx || []).map(x => `<span class="sfx-tag">🔊 ${x}</span>`).join('')}</div>
-                <button class="btn-neon" onclick="renderScene(${i})">Render Scene 🎬</button>
-                <div id="sceneContainer-${i}"></div>
+            container.innerHTML += `
+                <div class="card">
+                    <label>SCENE ${s.scene}</label>
+                    <p style="font-size:0.8rem;">${s.text}</p>
+                    <div style="margin:10px 0;">${s.sfx.map(x => `<span class="sfx-tag">🔊 ${x}</span>`).join('')}</div>
+                    <button class="btn-neon" onclick="renderScene(${i})">Render Scene</button>
+                    <div id="res-${i}"></div>
+                </div>
             `;
-            list.appendChild(div);
         });
-    } catch (e) {
-        console.error(e);
-        list.innerHTML = "❌ Error: " + (e.message || e);
-    }
+    } catch (e) { container.innerHTML = "❌ Error: " + e.message; }
 }
 
-// --- TAB 4: RENDER & PROMPTS ---
 async function renderScene(i) {
     const s = state.scenes[i];
-    const container = document.getElementById(`sceneContainer-${i}`);
-    if (!s || !container) return alert('Scene or container not found');
-    const isPro = document.getElementById('imgQuality') ? document.getElementById('imgQuality').checked : false;
-    const model = isPro ? 'seedream-pro' : 'seedream';
+    const resDiv = document.getElementById(`res-${i}`);
+    resDiv.innerHTML = "⏳ Rendering...";
+    
+    const humanoidRule = "Humanoid cat, cat head, human body structure";
+    const prompt = `${state.masterStyleDesc}. ${humanoidRule}. Scene: ${s.visual}. Cinematic.`;
+    
+    // Pake referensi karakter utama (index 0)
+    const ref = state.characters[0]?.imgUrl || "";
+    let url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=seedream-pro&seed=${state.sessionSeed}&width=1280&height=720&nologo=true`;
+    if(ref) url += `&image=${encodeURIComponent(ref)}`;
 
-    container.innerHTML = "<div class='status-msg'>⏳ Rendering...</div>";
-    const charContext = (state.characters || []).map(c => `${c.name} is ${c.base_desc || ''}`).join('. ');
-    const prompt = `${state.masterStyleDesc}. ${charContext}. Scene: ${s.visual || s.text}. Cinematic.`;
-
-    const mainCharImg = state.characters[0]?.imgUrl || ""; 
-    let url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1280&height=720&nologo=true`;
-    if (mainCharImg) url += `&image=${encodeURIComponent(mainCharImg)}`;
-
-    container.innerHTML = `
-        <img src="${url}" style="width:100%; border-radius:8px; margin-top:10px; border:1px solid #333;" onerror="this.style.opacity=0.6; console.error('Image render failed (maybe CORS)');">
-        <div class="prompt-area">
-            <strong>Video Prompt:</strong><br>${(s.motion || '')}
-            <br><button class="btn-copy" style="margin-top:5px;" onclick="copyTxt('${escapeForJS(s.motion || '')}')">Copy Text</button>
-            <button class="btn-copy" onclick="copyTxt('${escapeForJS(JSON.stringify(s))}')">Copy JSON</button>
+    resDiv.innerHTML = `
+        <img src="${url}" style="width:100%; border-radius:10px; margin-top:10px;">
+        <div style="background:#000; padding:10px; border-radius:8px; margin-top:10px; font-size:0.7rem;">
+            <strong>Motion:</strong> ${s.motion}
+            <br><button onclick="navigator.clipboard.writeText('${s.motion}')" style="margin-top:5px;">Copy</button>
         </div>
     `;
-    updateFinalTab();
 }
 
-function escapeForJS(str) {
-    if (!str) return '';
-    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '');
+// --- SETTINGS & UTILS ---
+function toggleSettings() {
+    const m = document.getElementById('settingsModal');
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
-
-function updateFinalTab() {
-    const prod = document.getElementById('finalProduction');
-    if (!prod) return;
-    prod.innerHTML = "<h2 style='text-align:center; color:var(--primary);'>PRODUCTION SUMMARY</h2>";
-    (state.scenes || []).forEach(s => {
-        prod.innerHTML += `<div class='card'><label>SCENE ${s.scene || ''}</label><p style='font-size:0.7rem;'>${s.motion || ''}</p></div>`;
-    });
+function saveKeys() {
+    state.pKey = document.getElementById('pKey').value;
+    state.iKey = document.getElementById('iKey').value;
+    localStorage.setItem('pKey', state.pKey);
+    localStorage.setItem('iKey', state.iKey);
+    toggleSettings();
 }
-
-function copyTxt(t) { 
-    navigator.clipboard.writeText(t).then(() => alert('Copied to MrG Clipboard!')).catch(e => { alert('Copy failed'); console.error(e); });
-}
-
 function downloadProjectJSON() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute('href', dataStr);
-    dlAnchor.setAttribute('download', 'MrG_Project.json');
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
+    const dl = document.createElement('a');
+    dl.setAttribute("href", dataStr);
+    dl.setAttribute("download", "MrG_Project.json");
+    dl.click();
 }
