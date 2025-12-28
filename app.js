@@ -8,26 +8,32 @@ let state = {
     sessionSeed: Math.floor(Math.random() * 999999)
 };
 
-// Load Keys
-document.getElementById('pKey').value = state.pKey;
-document.getElementById('iKey').value = state.iKey;
+// Load Keys (if elements exist)
+if (document.getElementById('pKey')) document.getElementById('pKey').value = state.pKey;
+if (document.getElementById('iKey')) document.getElementById('iKey').value = state.iKey;
 
 function showTab(n) {
     document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    document.getElementById('tab' + n).style.display = 'block';
-    document.getElementById('nav' + n).classList.add('active');
+    const tab = document.getElementById('tab' + n);
+    const nav = document.getElementById('nav' + n);
+    if (tab) tab.style.display = 'block';
+    if (nav) nav.classList.add('active');
     window.scrollTo(0,0);
 }
 
 function toggleSettings() {
     const m = document.getElementById('settingsModal');
+    if (!m) return;
     m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
 
 function saveKeys() {
-    state.pKey = document.getElementById('pKey').value.trim();
-    state.iKey = document.getElementById('iKey').value.trim();
+    const pEl = document.getElementById('pKey');
+    const iEl = document.getElementById('iKey');
+    if (!pEl || !iEl) return alert("Elements not found");
+    state.pKey = pEl.value.trim();
+    state.iKey = iEl.value.trim();
     localStorage.setItem('pKey', state.pKey);
     localStorage.setItem('iKey', state.iKey);
     alert("MrG Settings Saved!");
@@ -36,80 +42,150 @@ function saveKeys() {
 
 // --- CORE API CALL ---
 async function callAI(model, prompt) {
-    const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.pKey}` },
-        body: JSON.stringify({ model: model, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
-    if (!data.choices) throw new Error("AI Error: No choices returned");
-    return data.choices[0].message.content;
+    // Generic helper to call the chat completions endpoint used in this app.
+    const url = 'https://gen.pollinations.ai/v1/chat/completions';
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${state.pKey}` 
+            },
+            body: JSON.stringify({ model: model, messages: [{ role: 'user', content: prompt }] })
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        const data = await res.json();
+        // Support different response shapes
+        if (data.choices && data.choices.length > 0) {
+            const choice = data.choices[0];
+            if (choice.message && choice.message.content) return choice.message.content;
+            if (choice.text) return choice.text;
+        }
+        if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+        throw new Error("AI Error: No choices returned");
+    } catch (err) {
+        console.error("callAI error:", err);
+        throw err;
+    }
 }
 
 // --- TAB 1: STORY ---
 async function processStory() {
-    const idea = document.getElementById('storyIdea').value;
-    const dialogOn = document.getElementById('useDialog').checked;
+    const ideaEl = document.getElementById('storyIdea');
+    const dialogOnEl = document.getElementById('useDialog');
     const status = document.getElementById('status1');
+    if (!ideaEl) return alert("Text area not found");
+    const idea = ideaEl.value;
+    const dialogOn = dialogOnEl ? dialogOnEl.checked : false;
     if (!idea) return alert("Isi ide dulu, Bro!");
 
-    status.innerText = "⏳ MrG is calling Claude for the script...";
+    status.innerText = "⏳ MrG is calling AI for the script...";
     try {
+        // Generate story
         state.story = await callAI('claude', `Tulis cerita pendek profesional: ${idea}. Mode: ${dialogOn ? 'Dialog' : 'Narasi Visual'}. Bahasa Indonesia.`);
-        document.getElementById('storyDisplay').innerText = state.story;
-        
-        status.innerText = "⏳ GPT-4o is detecting characters...";
-        const charRes = await callAI('openai', `List tokoh utama dari cerita ini. Output JSON array SAJA: [{"name": "Nama", "base_desc": "Deskripsi fisik"}] \n\nCerita: ${state.story}`);
-        state.characters = JSON.parse(charRes.replace(/```json|```/g, "").trim());
-        
-        renderCharCards();
-        status.innerText = "✅ Story & Characters Ready!";
-        showTab(2);
-    } catch (e) { status.innerText = "❌ Error: " + e.message; }
+        const disp = document.getElementById('storyDisplay');
+        if (disp) disp.innerText = state.story;
+
+        status.innerText = "⏳ AI is detecting characters...";
+        // Ask AI to return a pure JSON array of characters
+        const charPrompt = `List tokoh utama dari cerita ini. Output hanya sebuah JSON array. Setiap item berbentuk: {"name":"Nama","base_desc":"Deskripsi fisik singkat"}. Jangan tambahan penjelasan.\n\nCerita:\n${state.story}`;
+        const charRes = await callAI('openai', charPrompt);
+
+        // Try to extract JSON from response (strip code fences, etc.)
+        const cleaned = (charRes || "").replace(/```json|```/g, "").trim();
+        let parsed = [];
+        try {
+            parsed = JSON.parse(cleaned);
+            if (!Array.isArray(parsed)) throw new Error("Parsed not array");
+        } catch (e) {
+            console.warn("Failed to parse characters JSON automatically, trying to find JSON substring...", e);
+            // Try to find first JSON array in the text
+            const m = cleaned.match(/\[([\s\S]*?)\]/);
+            if (m) {
+                try { parsed = JSON.parse(m[0]); }
+                catch (ee) { console.error("Second parse failed", ee); parsed = []; }
+            } else parsed = [];
+        }
+
+        if (!parsed.length) {
+            status.innerText = "⚠️ AI returned no characters (fallback). Please edit story or add characters manually.";
+            state.characters = [];
+        } else {
+            state.characters = parsed;
+            renderCharCards();
+            status.innerText = "✅ Story & Characters Ready!";
+            showTab(2);
+        }
+    } catch (e) {
+        console.error(e);
+        status.innerText = "❌ Error: " + (e.message || e);
+        alert("Error saat membuat story/karakter: " + (e.message || e));
+    }
 }
 
 // --- TAB 2: STYLE & CHARS ---
 async function handleStyle(type) {
     const status = document.getElementById('styleStatus');
+    if (!status) return;
     let url = "";
 
     if (type === 'url') {
-        url = document.getElementById('styleUrl').value;
+        const el = document.getElementById('styleUrl');
+        if (!el) return alert("styleUrl element not found");
+        url = el.value.trim();
+        if (!url) return alert("Masukkan URL gambar");
     } else {
-        const file = document.getElementById('styleUpload').files[0];
-        if (!file) return;
+        const fileInput = document.getElementById('styleUpload');
+        if (!fileInput) return alert("styleUpload element not found");
+        const file = fileInput.files[0];
+        if (!file) return alert("Pilih file dulu");
         status.innerText = "⏳ Uploading to ImgBB...";
-        const formData = new FormData();
-        formData.append("image", file);
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${state.iKey}`, { method: "POST", body: formData });
-        const data = await res.json();
-        url = data.data.url;
+        try {
+            const formData = new FormData();
+            formData.append("image", file);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${state.iKey}`, { method: "POST", body: formData });
+            const data = await res.json();
+            if (!data || !data.data || !data.data.url) throw new Error("ImgBB upload failed");
+            url = data.data.url;
+        } catch (e) {
+            console.error("ImgBB error:", e);
+            status.innerText = "❌ Upload failed: " + (e.message || e);
+            return;
+        }
     }
 
     status.innerText = "👁️ AI Analyzing Art Style...";
     try {
-        const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.pKey}` },
-            body: JSON.stringify({
-                model: "openai",
-                messages: [{ role: "user", content: [{ type: "text", text: "Describe the art style, lighting, and rendering of this image for an AI prompt. Concise only." }, { type: "image_url", image_url: { url: url } }] }]
-            })
-        });
-        const data = await res.json();
-        state.masterStyleDesc = data.choices[0].message.content;
-        status.innerText = "✅ Art Style Locked!";
-    } catch (e) { status.innerText = "❌ Style Analysis Failed"; }
+        // Simpler prompt: include image URL in text prompt
+        const prompt = `Describe the art style, lighting, and rendering of this image in one concise sentence suitable for image-generation prompts. Respond only with a short descriptive sentence (no extra text).\nImage URL: ${url}`;
+        const resText = await callAI('openai', prompt);
+        // Clean response
+        const cleaned = (resText || "").replace(/```/g, "").trim();
+        if (cleaned) {
+            state.masterStyleDesc = cleaned;
+            status.innerText = "✅ Art Style Locked!";
+        } else {
+            status.innerText = "⚠️ Style analysis returned empty.";
+        }
+    } catch (e) {
+        console.error(e);
+        status.innerText = "❌ Style Analysis Failed: " + (e.message || e);
+    }
 }
 
 function renderCharCards() {
     const grid = document.getElementById('charGrid');
+    if (!grid) return;
     grid.innerHTML = "";
     state.characters.forEach((char, i) => {
         const card = document.createElement('div');
         card.className = 'char-card';
+        const imgId = `charImg-${i}`;
         card.innerHTML = `
-            <img id="charImg-${i}" class="char-img" src="https://via.placeholder.com/150?text=No+Ref">
+            <img id="${imgId}" class="char-img" src="${char.imgUrl || 'https://via.placeholder.com/150?text=No+Ref'}">
             <label style="font-size:0.7rem; color:var(--primary);">${char.name}</label>
             <button class="btn-neon" style="font-size:0.6rem; padding:5px; margin-top:5px;" onclick="genCharRef(${i})">Gen Ref</button>
         `;
@@ -119,84 +195,123 @@ function renderCharCards() {
 
 async function genCharRef(i) {
     const char = state.characters[i];
-    const isPro = document.getElementById('imgQuality').checked;
+    if (!char) return alert("Character not found");
+    const isPro = document.getElementById('imgQuality') ? document.getElementById('imgQuality').checked : false;
     const model = isPro ? 'seedream-pro' : 'seedream';
     const imgTag = document.getElementById(`charImg-${i}`);
-    
-    const prompt = `${state.masterStyleDesc}. Full body character sheet of ${char.name}, ${char.base_desc}, standing straight, front view, neutral expression, white background, 3d render.`;
+    if (!imgTag) return alert("Image element not found");
+
+    const prompt = `${state.masterStyleDesc}. Full body character sheet of ${char.name}, ${char.base_desc || ''}, standing straight, front view, neutral expression, white background, 3d render.`;
     imgTag.style.opacity = "0.3";
     const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1024&height=1024&nologo=true`;
     
     imgTag.src = url;
     imgTag.onload = () => { imgTag.style.opacity = "1"; state.characters[i].imgUrl = url; };
+    imgTag.onerror = () => { imgTag.style.opacity = "1"; alert("Image generation failed or blocked (CORS). Check console."); console.error("Image URL failed:", url); };
 }
 
 // --- TAB 3: SCENES & SFX ---
 async function processScenes() {
     const list = document.getElementById('scenesList');
-    list.innerHTML = "<div class='status-msg'>⏳ GPT-4o is directing 8 scenes + SFX...</div>";
+    if (!list) return alert("scenesList element not found");
+    list.innerHTML = "<div class='status-msg'>⏳ AI is directing 8 scenes + SFX...</div>";
     showTab(3);
 
     try {
-        const res = await callAI('openai', `Pecah cerita jadi 8 scene visual. Untuk setiap scene berikan: 1. Narasi, 2. Visual prompt detail, 3. Motion prompt video, 4. Rekomendasi SFX (array). Output JSON array SAJA: [{"scene": 1, "text": "Narasi", "visual": "Prompt aksi", "motion": "Gerakan kamera", "sfx": ["suara1", "suara2"]}] \n\nCerita: ${state.story}`);
-        state.scenes = JSON.parse(res.replace(/```json|```/g, "").trim());
-        
+        const prompt = `Pecah cerita berikut menjadi 8 scene visual. Untuk setiap scene berikan objek JSON dengan properti: "scene" (nomor), "text" (narasi singkat), "visual" (prompt deskriptif untuk gambar), "motion" (prompt untuk video/motion), "sfx" (array string rekomendasi efek suara). Output: hanya sebuah JSON array berisi 8 object. Cerita:\n\n${state.story}`;
+        const resText = await callAI('openai', prompt);
+
+        const cleaned = (resText || "").replace(/```json|```/g, "").trim();
+        let parsed = [];
+        try {
+            parsed = JSON.parse(cleaned);
+            if (!Array.isArray(parsed)) throw new Error("Parsed not array");
+        } catch (e) {
+            console.warn("Failed to parse scenes JSON automatically, trying to find JSON substring...", e);
+            const m = cleaned.match(/\[([\s\S]*?)\]/);
+            if (m) {
+                try { parsed = JSON.parse(m[0]); }
+                catch (ee) { console.error("Second parse failed", ee); parsed = []; }
+            } else parsed = [];
+        }
+
+        if (!parsed.length) {
+            list.innerHTML = "<div class='status-msg'>❌ AI returned no scenes. Check story or API response (see console).</div>";
+            console.error("Scenes parse failed; raw response:", resText);
+            return;
+        }
+
+        state.scenes = parsed;
         list.innerHTML = "";
         state.scenes.forEach((s, i) => {
             const div = document.createElement('div');
             div.className = 'card neon-border';
             div.innerHTML = `
-                <label>SCENE ${s.scene}</label>
-                <p style="font-size:0.8rem; color:#ccc;">${s.text}</p>
-                <div class="sfx-container">${s.sfx.map(x => `<span class="sfx-tag">🔊 ${x}</span>`).join('')}</div>
+                <label>SCENE ${s.scene || (i+1)}</label>
+                <p style="font-size:0.8rem; color:#ccc;">${s.text || ''}</p>
+                <div class="sfx-container">${(s.sfx || []).map(x => `<span class="sfx-tag">🔊 ${x}</span>`).join('')}</div>
                 <button class="btn-neon" onclick="renderScene(${i})">Render Scene 🎬</button>
                 <div id="sceneContainer-${i}"></div>
             `;
             list.appendChild(div);
         });
-    } catch (e) { list.innerHTML = "❌ Error: " + e.message; }
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = "❌ Error: " + (e.message || e);
+    }
 }
 
 // --- TAB 4: RENDER & PROMPTS ---
 async function renderScene(i) {
     const s = state.scenes[i];
     const container = document.getElementById(`sceneContainer-${i}`);
-    const isPro = document.getElementById('imgQuality').checked;
+    if (!s || !container) return alert("Scene or container not found");
+    const isPro = document.getElementById('imgQuality') ? document.getElementById('imgQuality').checked : false;
     const model = isPro ? 'seedream-pro' : 'seedream';
 
-    container.innerHTML = "<div class='status-msg'>⏳ Rendering 4K...</div>";
-    const charContext = state.characters.map(c => `${c.name} is ${c.base_desc}`).join(". ");
-    const prompt = `${state.masterStyleDesc}. ${charContext}. Scene: ${s.visual}. Cinematic.`;
-    
+    container.innerHTML = "<div class='status-msg'>⏳ Rendering...</div>";
+    const charContext = (state.characters || []).map(c => `${c.name} is ${c.base_desc || ''}`).join(". ");
+    const prompt = `${state.masterStyleDesc}. ${charContext}. Scene: ${s.visual || s.text}. Cinematic.`;
+
     const mainCharImg = state.characters[0]?.imgUrl || ""; 
     let url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&seed=${state.sessionSeed}&width=1280&height=720&nologo=true`;
-    if(mainCharImg) url += `&image=${encodeURIComponent(mainCharImg)}`;
+    if (mainCharImg) url += `&image=${encodeURIComponent(mainCharImg)}`;
 
     container.innerHTML = `
-        <img src="${url}" style="width:100%; border-radius:8px; margin-top:10px; border:1px solid #333;">
+        <img src="${url}" style="width:100%; border-radius:8px; margin-top:10px; border:1px solid #333;" onerror="this.style.opacity=0.6; console.error('Image render failed (maybe CORS)');">
         <div class="prompt-area">
-            <strong>Video Prompt:</strong><br>${s.motion}
-            <br><button class="btn-copy" style="margin-top:5px;" onclick="copyTxt('${s.motion}')">Copy Text</button>
-            <button class="btn-copy" onclick="copyTxt('${JSON.stringify(s)}')">Copy JSON</button>
+            <strong>Video Prompt:</strong><br>${(s.motion || '')}
+            <br><button class="btn-copy" style="margin-top:5px;" onclick="copyTxt('${escapeForJS(s.motion || '')}')">Copy Text</button>
+            <button class="btn-copy" onclick="copyTxt('${escapeForJS(JSON.stringify(s))}')">Copy JSON</button>
         </div>
     `;
     updateFinalTab();
 }
 
+function escapeForJS(str) {
+    if (!str) return '';
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '');
+}
+
 function updateFinalTab() {
     const prod = document.getElementById('finalProduction');
+    if (!prod) return;
     prod.innerHTML = "<h2 style='text-align:center; color:var(--primary);'>PRODUCTION SUMMARY</h2>";
-    state.scenes.forEach(s => {
-        prod.innerHTML += `<div class='card'><label>SCENE ${s.scene}</label><p style='font-size:0.7rem;'>${s.motion}</p></div>`;
+    (state.scenes || []).forEach(s => {
+        prod.innerHTML += `<div class='card'><label>SCENE ${s.scene || ''}</label><p style='font-size:0.7rem;'>${s.motion || ''}</p></div>`;
     });
 }
 
-function copyTxt(t) { navigator.clipboard.writeText(t); alert("Copied to MrG Clipboard!"); }
+function copyTxt(t) { 
+    navigator.clipboard.writeText(t).then(() => alert("Copied to MrG Clipboard!")).catch(e => { alert("Copy failed"); console.error(e); });
+}
 
 function downloadProjectJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute("href", dataStr);
     dlAnchor.setAttribute("download", "MrG_Project.json");
+    document.body.appendChild(dlAnchor);
     dlAnchor.click();
-        }
+    dlAnchor.remove();
+                         }
