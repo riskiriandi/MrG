@@ -359,18 +359,21 @@
     </div>
 
     <!-- SCRIPTS -->
-    <!-- 1. API Handling (Paling Penting) -->
+    <!-- 1. CONFIG & STATE (LOAD DULUAN - WAJIB) -->
+    <!-- Ini biar pas web dibuka, dia baca dulu data lama dari localStorage -->
+    <script src="js/state.js"></script> 
+    
+    <!-- 2. API HANDLING -->
     <script src="js/api.js"></script>
     
-    <!-- 2. Main Logic (Tab Switching & Global UI) -->
+    <!-- 3. MAIN LOGIC (Global UI & Tab Switching) -->
     <script src="js/main.js"></script>
 
-    <!-- 3. Modular Tabs Logic -->
+    <!-- 4. MODULAR TABS LOGIC -->
     <script src="js/tabs/tab1.js"></script>
     <script src="js/tabs/tab2.js"></script>
     <script src="js/tabs/tab3.js"></script>
     <script src="js/tabs/tab4.js"></script>
     <script src="js/tabs/tab5.js"></script>
-
 </body>
 </html>
