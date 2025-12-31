@@ -1,7 +1,7 @@
 /**
  * js/tabs/tab1.js
  * Logika Tab 1: Story Generation & Character Extraction.
- * Mengubah ide kasar menjadi Naskah Master + Data Karakter (JSON).
+ * UPDATE: Fix English Prompts & Anthropomorphic Terminology.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,16 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCopy = document.getElementById('btn-copy-story');
     const btnNext = document.getElementById('btn-next-to-style');
 
-    // 2. LOAD DATA DARI STATE (Saat halaman direfresh)
-    // Kalau sudah ada data tersimpan, tampilkan kembali.
+    // 2. LOAD DATA DARI STATE
     if (AppState.story.rawIdea) {
         storyInput.value = AppState.story.rawIdea;
     }
-    
-    // Set status toggle sesuai simpanan
     updateToggleVisual(AppState.story.isDialogMode);
 
-    // Kalau sudah ada hasil generate sebelumnya, tampilkan
     if (AppState.story.masterScript) {
         showResult(AppState.story.masterScript, AppState.story.characters);
     }
@@ -35,13 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. LOGIC TOGGLE DIALOG
     if (btnToggle) {
         btnToggle.addEventListener('click', () => {
-            // Ubah state (true jadi false, false jadi true)
             AppState.story.isDialogMode = !AppState.story.isDialogMode;
-            
-            // Update visual tombol
             updateToggleVisual(AppState.story.isDialogMode);
-            
-            // Simpan perubahan
             saveProject();
         });
     }
@@ -49,14 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateToggleVisual(isActive) {
         const circle = btnToggle.querySelector('div');
         if (isActive) {
-            // Mode ON
             btnToggle.classList.remove('bg-gray-600');
             btnToggle.classList.add('bg-accent');
             circle.classList.add('translate-x-5');
             statusText.innerText = "ON";
             statusText.classList.add('text-accent');
         } else {
-            // Mode OFF
             btnToggle.classList.remove('bg-accent');
             btnToggle.classList.add('bg-gray-600');
             circle.classList.remove('translate-x-5');
@@ -65,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 4. LOGIC GENERATE STORY (THE CORE)
+    // 4. LOGIC GENERATE STORY (UPDATED PROMPT)
     if (btnGenerate) {
         btnGenerate.addEventListener('click', async () => {
             const idea = storyInput.value.trim();
@@ -75,60 +64,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Update UI jadi Loading
             setLoading(true);
 
             try {
-                // Simpan input user
                 AppState.story.rawIdea = idea;
 
-                // SIAPKAN PROMPT KHUSUS (JSON MODE)
                 const dialogInstruction = AppState.story.isDialogMode 
-                    ? "Include engaging dialogues between characters." 
-                    : "Focus on narration and descriptive storytelling, minimize dialogue.";
+                    ? "Include engaging dialogues." 
+                    : "Focus on narration, minimize dialogue.";
 
+                // SYSTEM PROMPT BARU (LEBIH PINTER)
                 const systemPrompt = `
 You are a professional Screenwriter and Character Designer.
 Your task is to convert the user's rough idea into a Master Script and extract character details.
 
 INSTRUCTIONS:
-1. Story: Write a compelling story based on the idea. ${dialogInstruction}
-2. Characters: Identify main characters. Create a detailed VISUAL description for each (face, body, clothes, distinct features).
-   - Example: "A humanoid cat, soft fur texture not skin, wearing cyberpunk vest."
+1. **Story Language:** Write the story in **INDONESIAN** (Bahasa Indonesia). ${dialogInstruction}
+2. **Character Prompts (CRITICAL):**
+   - Identify main characters.
+   - **Visual Description MUST be in ENGLISH.** This is for an AI Image Generator.
+   - Use high-quality keywords: "cinematic lighting", "detailed texture", "4k", "masterpiece".
+   - **IMPORTANT:** If the character is a human-animal hybrid (like a cat-human), use the term **"Anthropomorphic [Animal Name]"** or **"Furry"**. Do NOT just say "humanoid". Ensure you describe "fur texture" if applicable.
 
-OUTPUT FORMAT:
-You MUST output a valid JSON object with this exact structure:
+OUTPUT FORMAT (JSON ONLY):
 {
-  "title": "Title of the story",
-  "story_text": "The full story content here...",
+  "title": "Judul Cerita",
+  "story_text": "Teks cerita lengkap dalam Bahasa Indonesia...",
   "characters": [
     {
-      "name": "Character Name",
-      "visual_desc": "Detailed visual description for AI image generation"
+      "name": "Nama Karakter",
+      "visual_desc": "Anthropomorphic cat runner, soft fur texture, athletic body, wearing sportswear, cinematic lighting, detailed face, 8k resolution, running on track, sunny day"
     }
   ]
 }
-Do not output markdown code blocks. Just the raw JSON.
 `;
 
                 const messages = [
                     { role: "system", content: systemPrompt },
-                    { role: "user", content: `Idea: ${idea}` }
+                    { role: "user", content: `Ide Cerita: ${idea}` }
                 ];
 
-                // Panggil API (dari api.js) dengan mode JSON = true
+                // Panggil API
                 const resultJSON = await generateTextAI(messages, true);
 
                 console.log("AI Result:", resultJSON);
 
-                // Simpan ke State
+                // Simpan State
                 AppState.story.masterScript = resultJSON.story_text;
                 AppState.story.characters = resultJSON.characters;
                 AppState.story.lastGenerated = new Date().toISOString();
                 
-                saveProject(); // Auto-Save
-
-                // Tampilkan Hasil
+                saveProject();
                 showResult(resultJSON.story_text, resultJSON.characters);
 
             } catch (error) {
@@ -140,20 +126,26 @@ Do not output markdown code blocks. Just the raw JSON.
         });
     }
 
-    // 5. HELPER FUNCTIONS
+    // 5. HELPER FUNCTIONS (UI FIX)
     function showResult(text, chars) {
         resultArea.classList.remove('hidden');
         finalStoryText.innerText = text;
 
-        // Render Tags Karakter
+        // Render Tags Karakter (FIX UI KEPOTONG)
         tagsList.innerHTML = '';
         if (chars && chars.length > 0) {
             chars.forEach(char => {
                 const tag = document.createElement('div');
-                tag.className = 'px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 flex flex-col gap-1';
+                // Ubah style biar gak kepotong (w-full di mobile, auto di desktop)
+                tag.className = 'w-full md:w-[48%] p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 flex flex-col gap-1 hover:bg-white/10 transition-colors';
                 tag.innerHTML = `
-                    <span class="font-bold text-accent">${char.name}</span>
-                    <span class="text-[10px] text-gray-500 truncate max-w-[150px]">${char.visual_desc}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-accent text-base">${char.name}</span>
+                        <span class="text-[10px] bg-accent/20 px-2 py-0.5 rounded text-accent border border-accent/20">Prompt Ready</span>
+                    </div>
+                    <div class="text-xs text-gray-400 italic mt-1 border-t border-white/5 pt-2">
+                        "${char.visual_desc}"
+                    </div>
                 `;
                 tagsList.appendChild(tag);
             });
@@ -161,7 +153,6 @@ Do not output markdown code blocks. Just the raw JSON.
             tagsList.innerHTML = '<span class="text-xs text-gray-500">Tidak ada karakter spesifik terdeteksi.</span>';
         }
 
-        // Munculkan tombol lanjut
         btnNext.classList.remove('hidden');
     }
 
@@ -177,7 +168,6 @@ Do not output markdown code blocks. Just the raw JSON.
         }
     }
 
-    // Logic Tombol Copy
     if (btnCopy) {
         btnCopy.addEventListener('click', () => {
             navigator.clipboard.writeText(finalStoryText.innerText);
@@ -187,7 +177,6 @@ Do not output markdown code blocks. Just the raw JSON.
         });
     }
 
-    // Logic Tombol Lanjut (Pindah ke Tab 2)
     if (btnNext) {
         btnNext.addEventListener('click', () => {
             window.switchTab(2);
