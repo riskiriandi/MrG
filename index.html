@@ -1,84 +1,376 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>MrG – AI Production Suite</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MrG - AI Storyboard Production</title>
+    
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#050505', 
+                        accent: '#6366f1', 
+                        cardbg: 'rgba(30, 30, 36, 0.7)'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- CUSTOM STYLE -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- ICON LIBRARY -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
-<body>
+<body class="bg-darkbg text-white min-h-screen font-sans overflow-x-hidden selection:bg-accent selection:text-white">
 
-<header class="brand-header">
-  <div class="logo-wrapper">
-    <h1 class="logo-mrg">MrG</h1>
-  </div>
-  <p class="tagline">AI PRODUCTION SUITE</p>
-</header>
+    <!-- BACKGROUND ELEMENTS -->
+    <div class="fixed inset-0 z-[-2] opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed inset-0 z-[-1] pointer-events-none bg-grid"></div>
 
-<nav class="nav-bar">
-  <div class="nav-item active" onclick="showTab(1)">1. Story</div>
-  <div class="nav-item" onclick="showTab(2)">2. Casting</div>
-  <div class="nav-item" onclick="showTab(3)">3. Scene Images</div>
-  <div class="nav-item" onclick="showTab(4)">4. Video & SFX</div>
-</nav>
+    <div class="container mx-auto px-4 py-6 max-w-6xl relative z-10">
+        
+        <!-- HEADER -->
+        <header class="flex items-center justify-between mb-8 animate-fade-in glass-panel p-4 rounded-2xl">
+            <!-- LOGO -->
+            <div class="flex items-center gap-4">
+                <div class="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                    <img src="logo.png" alt="MrG Logo" class="object-cover w-full h-full">
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">MrG</h1>
+                    <p class="text-[10px] uppercase tracking-widest text-accent font-bold">AI Production Suite</p>
+                </div>
+            </div>
+            
+            <!-- STATUS & SETTINGS BUTTON -->
+            <div class="flex items-center gap-4">
+                <div id="status-indicator" class="hidden md:flex px-3 py-1.5 rounded-full bg-black/40 text-green-400 text-xs border border-green-500/20 items-center gap-2 backdrop-blur-md">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>System Ready</span>
+                </div>
 
-<main class="container">
+                <button id="btn-open-settings" class="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 group relative">
+                    <i class="ph ph-gear text-xl text-gray-300 group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
 
-<!-- TAB 1 -->
-<section id="tab1" class="tab active">
-  <div class="card">
-    <label>IDE CERITA</label>
-    <textarea id="storyIdea" placeholder="Masukkan ide cerita kasar..."></textarea>
-    <button class="btn-primary" onclick="generateStory()">Generate Master Script</button>
-    <div id="status1" class="status"></div>
-  </div>
+        <!-- NAVIGATION TABS -->
+        <nav class="flex overflow-x-auto no-scrollbar gap-3 mb-6 p-1.5 glass-panel rounded-xl sticky top-4 z-50">
+            <button data-tab="1" class="tab-btn active">Story</button>
+            <button data-tab="2" class="tab-btn">Style</button>
+            <button data-tab="3" class="tab-btn">Characters</button>
+            <button data-tab="4" class="tab-btn">Scenes</button>
+            <button data-tab="5" class="tab-btn">Video</button>
+        </nav>
 
-  <div id="storyResult" class="card hidden">
-    <h3>MASTER SCRIPT</h3>
-    <pre id="storyText"></pre>
-    <div id="charTags" class="char-tags"></div>
-    <button class="btn-next" onclick="showTab(2)">Next → Casting</button>
-  </div>
-</section>
+        <!-- MAIN CONTENT AREA -->
+        <main id="app-content" class="min-h-[60vh] relative transition-all duration-300">
+            
+            <!-- ================= TAB 1: STORY ================= -->
+            <section id="tab-content-1" class="tab-section animate-fade-in">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <!-- Header Tab 1 -->
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">Konsep Cerita</h2>
+                            <p class="text-xs text-gray-400">Tulis ide kasarmu, AI akan mengubahnya menjadi Naskah Master.</p>
+                        </div>
+                        
+                        <!-- Toggle Dialog -->
+                        <div class="flex items-center gap-3 bg-black/40 p-2 rounded-lg border border-white/10">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Dialog Mode</span>
+                            <button id="toggle-dialog" class="w-10 h-5 rounded-full bg-gray-600 relative transition-colors duration-300">
+                                <div class="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform duration-300"></div>
+                            </button>
+                            <span id="dialog-status-text" class="text-[10px] font-bold text-gray-500">OFF</span>
+                        </div>
+                    </div>
 
-<!-- TAB 2 -->
-<section id="tab2" class="tab">
-  <div class="card">
-    <h3>ART STYLE REFERENCE</h3>
-    <input type="file" id="styleFile">
-    <input type="text" id="styleUrl" placeholder="atau paste URL gambar">
-    <button class="btn-primary" onclick="saveStyle()">Save Reference</button>
-    <div id="styleStatus" class="status"></div>
-  </div>
+                    <!-- Input Area -->
+                    <div class="relative group">
+                        <label class="text-xs text-accent font-bold mb-1 block">IDE KASAR / KONSEP:</label>
+                        <textarea id="story-input" 
+                            class="w-full h-32 bg-black/30 text-gray-300 p-4 rounded-xl border border-white/10 focus:border-accent focus:outline-none resize-none text-sm transition-all"
+                            placeholder="Contoh: Jono si cyborg ketemu Siti di pasar gelap..."></textarea>
+                    </div>
 
-  <div class="card">
-    <h3>CHARACTER BANK</h3>
-    <div id="charGrid" class="char-grid"></div>
-    <button class="btn-next" onclick="showTab(3)">Next → Scenes</button>
-  </div>
-</section>
+                    <!-- Result Area (Hidden by default) -->
+                    <div id="story-result-area" class="hidden space-y-4 animate-fade-in">
+                        <div class="glass-panel p-6 rounded-xl border-l-4 border-accent">
+                            <div class="flex justify-between items-center mb-4">
+                                <label class="text-xs text-white font-bold uppercase tracking-widest">
+                                    <i class="ph ph-scroll"></i> Master Script (AI Generated)
+                                </label>
+                                <button id="btn-copy-story" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-gray-300 transition-colors">
+                                    <i class="ph ph-copy"></i> Copy
+                                </button>
+                            </div>
+                            <div id="final-story-text" class="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap font-serif"></div>
+                        </div>
 
-<!-- TAB 3 -->
-<section id="tab3" class="tab">
-  <div class="card">
-    <h3>SCENE IMAGES</h3>
-    <button class="btn-primary" onclick="generateScenes()">Generate 8 Scene Images</button>
-    <div id="sceneGrid" class="scene-grid"></div>
-    <button class="btn-next" onclick="showTab(4)">Next → Video</button>
-  </div>
-</section>
+                        <!-- Character Tags -->
+                        <div id="char-tags-container" class="glass-panel p-4 rounded-xl">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">
+                                <i class="ph ph-users"></i> Karakter Terdeteksi
+                            </label>
+                            <div id="tags-list" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
 
-<!-- TAB 4 -->
-<section id="tab4" class="tab">
-  <div class="card">
-    <h3>VIDEO PROMPT & SFX</h3>
-    <div id="videoOutput"></div>
-  </div>
-</section>
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end pt-4 gap-3">
+                        <button id="btn-generate-story" class="btn-neon px-8 py-3 rounded-xl font-bold flex items-center gap-2">
+                            <i class="ph ph-magic-wand text-lg"></i>
+                            <span>Generate Story & Characters</span>
+                        </button>
 
-</main>
+                        <button id="btn-next-to-style" class="hidden btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200">
+                            <span>Lanjut ke Style</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
 
-<script src="app.js"></script>
+            <!-- ================= TAB 2: STYLE ================= -->
+            <section id="tab-content-2" class="tab-section hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto space-y-6 pb-10">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h2 class="text-2xl font-bold text-white">Visual Style</h2>
+                        <span class="px-2 py-0.5 rounded text-[10px] bg-accent/20 text-accent border border-accent/20">Config Phase</span>
+                    </div>
+                
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Kolom Kiri: Input Gambar -->
+                        <div class="glass-panel p-6 rounded-2xl flex flex-col h-full">
+                            <label class="block text-accent text-xs font-bold mb-4 uppercase tracking-wider">
+                                1. Referensi Gambar (Source)
+                            </label>
+                            
+                            <div id="upload-area" class="relative border-2 border-dashed border-white/10 hover:border-accent/50 rounded-xl bg-black/20 transition-all group cursor-pointer h-48 flex flex-col items-center justify-center overflow-hidden">
+                                <input type="file" id="style-file-input" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                                
+                                <div id="upload-placeholder" class="text-center p-4 transition-opacity duration-300">
+                                    <i class="ph ph-upload-simple text-3xl text-gray-500 group-hover:text-accent mb-2"></i>
+                                    <p class="text-xs text-gray-400">Klik pilih file gambar</p>
+                                </div>
+                                <img id="style-image-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity">
+                            </div>
+                
+                            <div class="mt-4 flex items-center gap-2">
+                                <div class="text-[10px] text-gray-500 font-bold whitespace-nowrap">ATAU LINK:</div>
+                                <input type="text" id="style-url-input" placeholder="https://..." class="input-dark w-full rounded-lg px-3 py-2 text-xs">
+                            </div>
+                
+                            <button id="btn-analyze-style" class="w-full mt-4 bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-lg transition-all text-xs font-bold border border-white/10 flex justify-center items-center gap-2">
+                                <i class="ph ph-scan"></i> Analisa Style
+                            </button>
+                            <p id="style-status-text" class="text-[10px] text-gray-500 mt-3 text-center min-h-[1.5em]"></p>
+                        </div>
+                
+                        <!-- Kolom Kanan: Config -->
+                        <div class="space-y-4">
+                            <!-- Aspect Ratio -->
+                            <div class="glass-panel p-5 rounded-2xl">
+                                <label class="block text-white text-xs font-bold mb-3 uppercase tracking-wider">
+                                    <i class="ph ph-frame-corners text-accent"></i> Aspect Ratio
+                                </label>
+                                <div class="grid grid-cols-3 gap-2" id="ratio-container">
+                                    <button data-ratio="1:1" class="ratio-btn active bg-accent/20 border border-accent text-white py-2 rounded-lg text-xs font-bold hover:bg-accent/30 transition-all">1:1</button>
+                                    <button data-ratio="16:9" class="ratio-btn bg-black/30 border border-white/10 text-gray-400 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-all">16:9</button>
+                                    <button data-ratio="9:16" class="ratio-btn bg-black/30 border border-white/10 text-gray-400 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-all">9:16</button>
+                                </div>
+                            </div>
+                
+                            <!-- Quality Toggle -->
+                            <div class="glass-panel p-5 rounded-2xl flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-white font-bold text-sm flex items-center gap-2">
+                                        <i class="ph ph-crown text-yellow-500"></i> Pro Quality (4K)
+                                    </h3>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">Model: seedream-pro / flux-pro</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="toggle-quality" class="sr-only peer" checked> 
+                                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                                </label>
+                            </div>
+                
+                            <!-- Master Prompt -->
+                            <div class="glass-panel p-5 rounded-2xl">
+                                <label class="block text-accent text-xs font-bold mb-2 uppercase tracking-wider">Master Style Prompt</label>
+                                <textarea id="master-style-prompt" rows="4" class="input-dark w-full rounded-lg p-3 text-xs leading-relaxed resize-none" placeholder="Deskripsi style akan muncul di sini..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div class="flex justify-end pt-4 pb-8 relative z-50">
+                        <button id="btn-save-style" class="btn-neon px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-accent/20 cursor-pointer">
+                            <span>Simpan & Lanjut ke Karakter</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 3: CHARACTERS ================= -->
+            <section id="tab-content-3" class="tab-section hidden animate-fade-in">
+                <div class="max-w-6xl mx-auto pb-20">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">Character Casting</h2>
+                            <p class="text-xs text-gray-400">Visual karakter dari Cerita & Style.</p>
+                        </div>
+                        <button id="btn-generate-all-chars" class="btn-neon px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                            <i class="ph ph-lightning"></i> Generate All
+                        </button>
+                    </div>
+                
+                    <!-- Grid Kartu Karakter -->
+                    <div id="char-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <!-- Kartu akan di-inject via JS -->
+                        <div class="col-span-full text-center py-10 text-gray-500 border border-dashed border-white/10 rounded-xl">
+                            Belum ada karakter. Generate cerita dulu di Tab 1.
+                        </div>
+                    </div>
+                
+                    <div class="flex justify-end pt-8">
+                        <button id="btn-next-to-scenes" class="btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2">
+                            <span>Lanjut ke Scenes</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 4: SCENES ================= -->
+            <section id="tab-content-4" class="tab-section hidden animate-fade-in">
+                <div class="max-w-6xl mx-auto pb-20">
+                    <!-- Header Controls -->
+                    <div class="glass-panel p-4 rounded-xl mb-6 flex flex-wrap gap-4 items-center justify-between border-l-4 border-accent">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Scene Director</h2>
+                            <p class="text-xs text-gray-400">Pecah cerita jadi storyboard visual.</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10">
+                                <label class="text-[10px] uppercase font-bold text-gray-400">Jumlah Scene:</label>
+                                <input type="number" id="scene-count-input" value="6" min="1" max="20" class="bg-transparent text-white font-bold w-10 text-center focus:outline-none border-b border-accent">
+                            </div>
+                            
+                            <button id="btn-generate-scenes" class="btn-neon px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                                <i class="ph ph-film-strip"></i> Generate Storyboard
+                            </button>
+                        </div>
+                    </div>
+                
+                    <!-- Container Scene -->
+                    <div id="scenes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="col-span-full text-center py-20 bg-white/5 rounded-xl border border-dashed border-white/10 text-gray-500">
+                            <i class="ph ph-film-slate text-4xl mb-2 opacity-50"></i>
+                            <p class="text-sm">Klik Generate buat mulai bikin adegan.</p>
+                        </div>
+                    </div>
+                
+                    <div class="flex justify-end pt-8">
+                        <button id="btn-next-to-video" class="btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2">
+                            <span>Lanjut ke Video</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 5: VIDEO ================= -->
+            <section id="tab-content-5" class="tab-section hidden animate-fade-in">
+                <div class="max-w-4xl mx-auto text-center py-20">
+                    <div class="glass-panel p-10 rounded-2xl border border-white/10">
+                        <i class="ph ph-video-camera text-5xl text-accent mb-4"></i>
+                        <h2 class="text-2xl font-bold text-white mb-2">Video Generation</h2>
+                        <p class="text-gray-400 mb-6">Fitur ini akan menggunakan model <code>veo</code> atau <code>seedance</code> dari Pollinations.</p>
+                        <button class="btn-neon px-6 py-2 rounded-lg opacity-50 cursor-not-allowed">Coming Soon</button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL SETTINGS (GLOBAL) -->
+    <div id="settings-modal" class="fixed inset-0 z-[100] hidden">
+        <div id="settings-backdrop" class="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-2xl p-8 shadow-2xl transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-3">
+                    <i class="ph ph-sliders-horizontal text-accent"></i> 
+                    API Configuration
+                </h2>
+                <button id="btn-close-settings" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Pollinations Key -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Pollinations API Key (Optional)</label>
+                    <div class="relative">
+                        <i class="ph ph-robot absolute left-3 top-3.5 text-gray-500"></i>
+                        <input type="password" id="input-pollinations-key" placeholder="Kosong = Mode Gratis (Slower)" 
+                            class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-all">
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-1">Dapatkan di enter.pollinations.ai untuk speed lebih cepat & model private.</p>
+                </div>
+
+                <!-- ImgBB Key (Buat upload referensi style) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">ImgBB API Key (Wajib untuk Upload)</label>
+                    <div class="relative">
+                        <i class="ph ph-image absolute left-3 top-3.5 text-gray-500"></i>
+                        <input type="password" id="input-imgbb-key" placeholder="Paste key ImgBB..." 
+                            class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-all">
+                    </div>
+                </div>
+
+                <button id="btn-save-settings" class="w-full btn-neon font-bold py-3 rounded-xl mt-2 flex items-center justify-center gap-2">
+                    <i class="ph ph-floppy-disk text-lg"></i>
+                    Simpan Konfigurasi
+                </button>
+
+                <div class="pt-4 border-t border-white/10 mt-4">
+                    <button id="btn-reset-project" class="w-full py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <i class="ph ph-trash"></i> Hapus Data Project (Reset)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <!-- 1. API Handling (Paling Penting) -->
+    <script src="js/api.js"></script>
+    
+    <!-- 2. Main Logic (Tab Switching & Global UI) -->
+    <script src="js/main.js"></script>
+
+    <!-- 3. Modular Tabs Logic -->
+    <script src="js/tabs/tab1.js"></script>
+    <script src="js/tabs/tab2.js"></script>
+    <script src="js/tabs/tab3.js"></script>
+    <script src="js/tabs/tab4.js"></script>
+    <script src="js/tabs/tab5.js"></script>
+
 </body>
 </html>
