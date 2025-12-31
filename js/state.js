@@ -1,116 +1,124 @@
 /**
  * js/state.js
  * Bertugas menangani State Management & LocalStorage Persistence.
- * File ini harus di-load SEBELUM file JS lainnya.
+ * UPDATE: Fix Reset Project agar API Key TIDAK ikut terhapus.
  */
 
 // 1. DEFINISI STATE DEFAULT (Kosong)
-// Ini dipakai saat pertama kali buka atau setelah Reset.
 const DEFAULT_STATE = {
     // --- TAB 1: STORY ---
     story: {
-        rawIdea: "",            // Input ide kasar user
-        isDialogMode: false,    // Toggle Dialog Mode
-        masterScript: "",       // Hasil generate cerita (Teks/JSON)
-        characters: [],         // List karakter hasil ekstraksi (Array of Objects)
-        lastGenerated: null     // Timestamp terakhir generate
+        rawIdea: "",
+        isDialogMode: false,
+        masterScript: "",
+        characters: [],
+        lastGenerated: null
     },
 
     // --- TAB 2: STYLE ---
     style: {
-        referenceImageUrl: "",  // URL gambar dari ImgBB
-        referenceImageFile: null, // (Tidak disimpan di localStorage, cuma runtime)
-        masterPrompt: "",       // Prompt gaya visual hasil analisa AI
-        aspectRatio: "16:9",    // Default ratio
-        width: 1280,            // Default width (16:9)
-        height: 720,            // Default height (16:9)
-        selectedModel: "seedream" // Pilihan: seedream, seedream-pro, nanobanana
+        referenceImageUrl: "",
+        referenceImageFile: null, // Runtime only
+        masterPrompt: "",
+        aspectRatio: "16:9",
+        width: 1280,
+        height: 720,
+        selectedModel: "seedream"
     },
 
     // --- TAB 3: CHARACTERS ---
     characters: {
-        // Menyimpan URL hasil generate per karakter
-        // Format key-value: { "Nama Karakter": "URL_GAMBAR_POLLINATIONS" }
         generatedImages: {} 
     },
 
     // --- TAB 4: SCENES ---
     scenes: {
-        count: 6,               // Target jumlah scene
-        data: []                // Array of Objects: { id, description, visualPrompt, lighting, imageUrl }
+        count: 6,
+        data: []
     },
 
     // --- TAB 5: VIDEO ---
     video: {
-        generatedVideos: {}     // Format: { sceneId: "URL_VIDEO" }
+        generatedVideos: {}
     },
 
     // --- GLOBAL SETTINGS ---
     settings: {
-        pollinationsKey: "",    // API Key Pollinations (Optional)
-        imgbbKey: ""            // API Key ImgBB (Wajib buat Tab 2)
+        pollinationsKey: "",
+        imgbbKey: ""
     }
 };
 
-// 2. INISIALISASI STATE (APP_STATE)
-// Cek apakah ada data tersimpan di LocalStorage?
-// Kalau ada, pakai itu. Kalau tidak, pakai DEFAULT_STATE.
+// 2. INISIALISASI STATE
 let savedData = localStorage.getItem('MrG_Project_Data');
 let AppState = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(DEFAULT_STATE));
 
 console.log("State Loaded:", AppState);
 
 // 3. FUNGSI SAVE (PERSISTENCE)
-// Panggil fungsi ini setiap kali ada update data penting.
 function saveProject() {
     try {
-        // Kita stringify AppState dan simpan ke LocalStorage browser
         localStorage.setItem('MrG_Project_Data', JSON.stringify(AppState));
         console.log("✅ Project Auto-Saved");
         
-        // Update visual indikator (opsional, kalau ada elemennya)
+        // Visual Feedback di Header
         const statusInd = document.getElementById('status-indicator');
         if(statusInd) {
-            const originalText = statusInd.innerHTML;
-            statusInd.innerHTML = `<div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div><span>Saving...</span>`;
-            setTimeout(() => {
-                statusInd.innerHTML = `<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span>Saved</span>`;
-            }, 800);
+            // Cek status API Key buat nentuin warna
+            if (!AppState.settings.imgbbKey) {
+                statusInd.innerHTML = `<div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div><span class="text-red-400">Setup Required</span>`;
+            } else {
+                statusInd.innerHTML = `<div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div><span>Saving...</span>`;
+                setTimeout(() => {
+                    statusInd.innerHTML = `<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span>System Ready</span>`;
+                }, 800);
+            }
         }
     } catch (e) {
         console.error("Gagal menyimpan project:", e);
-        alert("Memory Penuh! Gagal melakukan Auto-Save.");
     }
 }
 
-// 4. FUNGSI RESET (HAPUS DATA)
-// Mengembalikan aplikasi ke kondisi awal (kosong).
+// 4. FUNGSI RESET (HAPUS DATA TAPI SIMPAN KEY)
 function resetProject() {
-    if (confirm("Yakin mau hapus semua data project? Tindakan ini tidak bisa dibatalkan.")) {
-        // 1. Hapus dari storage
-        localStorage.removeItem('MrG_Project_Data');
+    if (confirm("Yakin mau hapus data cerita & gambar? (API Key tidak akan dihapus)")) {
         
-        // 2. Reset variable global ke default
+        // A. AMANKAN API KEY DULU
+        const currentSettings = { ...AppState.settings };
+        
+        // B. RESET STATE KE DEFAULT
         AppState = JSON.parse(JSON.stringify(DEFAULT_STATE));
         
-        // 3. Reload halaman biar bersih total
+        // C. KEMBALIKAN API KEY
+        AppState.settings = currentSettings;
+        
+        // D. SIMPAN STATE BARU (YANG BERSIH TAPI ADA KEY-NYA)
+        saveProject();
+        
+        // E. RELOAD HALAMAN
         location.reload();
     }
 }
 
 // 5. HELPER: UPDATE SETTINGS
-// Khusus buat nyimpen API Key dari modal settings
 function updateSettings(polliKey, imgKey) {
     AppState.settings.pollinationsKey = polliKey.trim();
     AppState.settings.imgbbKey = imgKey.trim();
-    saveProject(); // Langsung save
+    saveProject();
+    
+    // Trigger re-check status UI
+    const statusInd = document.getElementById('status-indicator');
+    if(statusInd && AppState.settings.imgbbKey) {
+        statusInd.innerHTML = `<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span>System Ready</span>`;
+        const btnGear = document.getElementById('btn-open-settings');
+        if(btnGear) btnGear.classList.remove('border-red-500', 'text-red-400');
+    }
 }
 
 // 6. HELPER: GET MODEL CONFIG
-// Buat ngambil config width/height berdasarkan ratio yang dipilih
 function getDimensions(ratio) {
     if (ratio === "1:1") return { w: 1024, h: 1024 };
     if (ratio === "16:9") return { w: 1280, h: 720 };
     if (ratio === "9:16") return { w: 720, h: 1280 };
-    return { w: 1024, h: 1024 }; // Fallback
+    return { w: 1024, h: 1024 };
 }
