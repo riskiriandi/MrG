@@ -1,7 +1,7 @@
 /**
  * js/api.js
  * Mengatur semua komunikasi ke API Eksternal.
- * VERSI DEBUG: Menampilkan pesan error asli dari server & menghapus parameter berisiko.
+ * FIX FINAL: Mengembalikan parameter 'model: openai' sesuai dokumentasi resmi.
  */
 
 const API_BASE_CHAT = 'https://gen.pollinations.ai/v1/chat/completions'; 
@@ -42,24 +42,27 @@ async function uploadToImgBB(file) {
 // 3. TEXT & VISION GENERATION (CORE)
 // =================================================================
 async function generateTextAI(messages, jsonMode = false) {
-    // 1. Ambil & Bersihkan API Key
+    // 1. Ambil API Key
     let apiKey = AppState.settings.pollinationsKey;
-    if (apiKey) apiKey = apiKey.trim(); // Hapus spasi depan/belakang
+    if (apiKey) apiKey = apiKey.trim();
 
     const headers = {
         'Content-Type': 'application/json',
     };
+    // Hanya kirim header Authorization kalau key-nya ada
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-    // 2. Body Request Paling Sederhana (Anti-Error)
-    // Kita HAPUS 'model' biar server pake default (biasanya gpt-4o atau openai)
-    // Kita HAPUS 'temperature' biar default
+    // 2. Body Request Sesuai Dokumentasi
+    // WAJIB ADA: model: "openai"
     const body = {
-        messages: messages
+        model: "openai", 
+        messages: messages,
+        temperature: 0.7
+        // JANGAN ADA parameter 'json' atau 'response_format' di sini.
     };
 
     try {
-        console.log("🚀 Sending Request:", body); // Cek di Console (F12)
+        console.log("🚀 Sending Request to Pollinations...", body);
 
         const response = await fetch(API_BASE_CHAT, {
             method: "POST",
@@ -67,38 +70,44 @@ async function generateTextAI(messages, jsonMode = false) {
             body: JSON.stringify(body)
         });
 
-        // 3. Cek Error dengan Detail
+        // 3. Error Handling
         if (!response.ok) {
-            const errText = await response.text(); // Baca pesan error asli dari server
+            const errText = await response.text();
             console.error("❌ API Error Response:", errText);
             
-            // Analisa Error
-            if (response.status === 400) {
-                // Kemungkinan Key salah format atau Body rusak
-                throw new Error(`Server menolak request (400). Pesan Server: ${errText}`);
-            }
-            if (response.status === 401) {
-                throw new Error("API Key Pollinations Salah/Expired. Coba kosongkan Key di Settings (Mode Gratis).");
-            }
+            if (response.status === 400) throw new Error("Error 400 (Bad Request). Cek format pesan atau API Key.");
+            if (response.status === 401) throw new Error("Error 401 (Unauthorized). API Key salah.");
             throw new Error(`API Error ${response.status}: ${errText}`);
         }
 
         const data = await response.json();
+        
+        // Validasi response data
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error("Format response API tidak dikenali.");
+        }
+
         let content = data.choices[0].message.content;
 
-        // 4. Parsing JSON Manual
+        // 4. Parsing JSON Manual (Client Side)
         if (jsonMode) {
+            // Bersihkan markdown ```json ... ```
             content = content.replace(/```json/g, '').replace(/```/g, '').trim();
-            try {
-                return JSON.parse(content); 
-            } catch (e) {
-                // Fallback: Cari kurung kurawal
-                const first = content.indexOf('{');
-                const last = content.lastIndexOf('}');
-                if (first !== -1 && last !== -1) {
-                    return JSON.parse(content.substring(first, last + 1));
+            
+            // Cari kurung kurawal pertama dan terakhir (biar aman dari teks sampah)
+            const first = content.indexOf('{');
+            const last = content.lastIndexOf('}');
+            
+            if (first !== -1 && last !== -1) {
+                const cleanJson = content.substring(first, last + 1);
+                try {
+                    return JSON.parse(cleanJson); 
+                } catch (e) {
+                    console.error("JSON Parse Fail:", cleanJson);
+                    throw new Error("AI merespon, tapi format JSON-nya rusak.");
                 }
-                throw new Error("AI tidak menghasilkan JSON valid.");
+            } else {
+                throw new Error("AI tidak memberikan format JSON object.");
             }
         }
 
@@ -106,7 +115,7 @@ async function generateTextAI(messages, jsonMode = false) {
 
     } catch (error) {
         console.error("Text Gen Error:", error);
-        throw error; // Lempar ke UI biar muncul di alert
+        throw error; 
     }
 }
 
@@ -146,4 +155,4 @@ async function analyzeImageStyle(imageUrl) {
         }
     ];
     return await generateTextAI(messages, false);
-}
+        }
