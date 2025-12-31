@@ -124,13 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // B. LOGIC PROMPT & GENERATE
     // =================================================================
     
+    // GANTI FUNGSI INI DI js/tabs/tab3.js
     function constructDefaultPrompt(char) {
-        // INI LOGIC BIAR POSE TEGAK & BACKGROUND POLOS
-        const style = AppState.style.masterPrompt || "cinematic";
+        // Style dasar diambil dari Tab 2, tapi kita paksa arahkan ke 3D
+        const style = AppState.style.masterPrompt || "3D Animation Style";
         
-        // Kita taruh "Character Sheet" di depan biar AI fokus ke desain karakter
-        // Tambahin "Simple Background" biar gak gambar bar/hutan
-        return `(Character Sheet Design:1.5), (Full Body Shot:1.3), (Neutral Pose), (Simple Grey Background), ${char.visual_desc}, ${style}, 8k resolution, masterpiece`;
+        // RUMUS BARU (PIXAR STYLE):
+        // 1. (3D Render:1.5) -> Bobot tinggi biar jadi 3D
+        // 2. (Full Body Shot) -> Biar kelihatan badan
+        // 3. (Simple Background) -> Biar bersih
+        return `(3D Render:1.5), (Disney Pixar Style:1.4), (Full Body Shot), (Standing Straight), (Front View), (Cute and Expressive), (Simple Soft Gradient Background), ${char.visual_desc}, ${style}, octane render, 8k, masterpiece`;
     }
 
     async function generateSingleChar(charName, prompt, index) {
