@@ -1,14 +1,12 @@
 /**
  * js/tabs/tab4.js
  * Logika Tab 4: Scene Director (Storyboard).
- * Memecah cerita menjadi adegan visual & menjaga konsistensi karakter.
+ * UPDATE: Fix JSON Parsing Error, Face Lock Consistency, & 3D Style Support.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. AMBIL ELEMENT DOM
-    const sceneCountInput = document.getElementById('scene-count-input'); // Pastikan ID ini ada di HTML Tab 4
-    // Kalau di HTML lu ID-nya 'scene-count', sesuaikan. Di index.html yg gw kasih ID-nya: scene-count-input
-    
+    const sceneCountInput = document.getElementById('scene-count-input');
     const btnGenerateScenes = document.getElementById('btn-generate-scenes');
     const scenesContainer = document.getElementById('scenes-container');
     const btnNext = document.getElementById('btn-next-to-video');
@@ -17,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tab4Btn = document.querySelector('button[data-tab="4"]');
     if (tab4Btn) tab4Btn.addEventListener('click', loadScenesUI);
     
-    // Load awal
+    // Load awal (jika refresh di tab ini)
     loadScenesUI();
 
     // =================================================================
@@ -38,39 +36,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalText = btnGenerateScenes.innerHTML;
             btnGenerateScenes.disabled = true;
             btnGenerateScenes.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Merancang Storyboard...';
+            
+            // Tampilan Loading di Container
             scenesContainer.innerHTML = `
                 <div class="col-span-full flex flex-col items-center justify-center py-20 text-accent animate-pulse">
                     <i class="ph ph-film-strip text-5xl mb-4"></i>
                     <p>AI sedang membaca naskah dan membagi adegan...</p>
+                    <p class="text-xs text-gray-500 mt-2">Mohon tunggu, sedang menyusun JSON...</p>
                 </div>
             `;
 
             try {
-                // SYSTEM PROMPT KHUSUS SCENE
+                // SYSTEM PROMPT KHUSUS SCENE (Strict JSON)
                 const systemPrompt = `
-You are an expert Movie Director and Storyboard Artist.
-Task: Split the provided story into exactly ${targetCount} distinct visual scenes.
+You are an expert Movie Director for a 3D Animation Movie.
+Task: Split the story into exactly ${targetCount} visual scenes.
 
 INSTRUCTIONS:
-1. Analyze the story flow.
-2. Break it down into ${targetCount} key moments (Scenes).
-3. For each scene, identify which characters are present.
-4. Create a "visual_prompt" in ENGLISH for Image Generation.
-   - Include: Camera angle, Lighting, Environment, Character Action.
-   - Style: ${AppState.style.masterPrompt || "Cinematic, Detailed"}.
+1. Analyze the story.
+2. Break it down into ${targetCount} scenes.
+3. **Visual Prompt (ENGLISH):** Describe the scene for a 3D Image Generator. 
+   - Use keywords: "3D render", "Pixar style", "cute", "volumetric lighting".
+   - Mention the character's action clearly.
+4. **Characters:** List EXACT names of characters present.
 
-OUTPUT JSON FORMAT:
+OUTPUT JSON FORMAT ONLY (NO MARKDOWN):
 {
   "scenes": [
     {
       "id": 1,
-      "description": "Deskripsi singkat scene dalam Bahasa Indonesia...",
-      "visual_prompt": "Wide shot, cyberpunk street at night, neon rain, Jono standing looking at a hologram, cinematic lighting, 8k",
-      "characters_in_scene": ["Jono"] 
+      "description": "Deskripsi singkat scene (Indo)...",
+      "visual_prompt": "Wide shot, 3D render, cute cat running in a kitchen, motion blur, bright lighting, Pixar style",
+      "characters_in_scene": ["Kiko"] 
     }
   ]
 }
-IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
 `;
 
                 const messages = [
@@ -79,9 +79,15 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
                 ];
 
                 // Panggil API Text (JSON Mode)
+                console.log("🚀 Mengirim request scene ke AI...");
                 const result = await generateTextAI(messages, true);
                 
-                console.log("Scene Result:", result);
+                console.log("✅ Scene Result:", result);
+
+                // Validasi Struktur JSON
+                if (!result || !result.scenes || !Array.isArray(result.scenes)) {
+                    throw new Error("Format JSON dari AI tidak valid. Coba generate ulang.");
+                }
 
                 // Simpan ke State
                 AppState.scenes.data = result.scenes;
@@ -92,9 +98,14 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
                 renderScenes();
 
             } catch (error) {
-                console.error(error);
+                console.error("❌ Error Tab 4:", error);
                 alert("Gagal membuat scene: " + error.message);
-                scenesContainer.innerHTML = `<div class="col-span-full text-center text-red-400">Error: ${error.message}</div>`;
+                scenesContainer.innerHTML = `
+                    <div class="col-span-full text-center p-10 border border-red-500/30 bg-red-500/10 rounded-xl">
+                        <i class="ph ph-warning text-3xl text-red-400 mb-2"></i>
+                        <p class="text-red-300 mb-4">Terjadi kesalahan saat memproses data.</p>
+                        <button onclick="location.reload()" class="text-xs underline text-gray-400">Refresh Halaman</button>
+                    </div>`;
             } finally {
                 btnGenerateScenes.disabled = false;
                 btnGenerateScenes.innerHTML = originalText;
@@ -115,10 +126,10 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
         scenesContainer.innerHTML = '';
         
         AppState.scenes.data.forEach((scene, index) => {
-            const savedImage = scene.imageUrl; // Gambar yg udah digenerate (kalau ada)
+            const savedImage = scene.imageUrl; 
 
             const card = document.createElement('div');
-            card.className = 'glass-panel rounded-xl overflow-hidden flex flex-col md:flex-row animate-fade-in border border-white/10';
+            card.className = 'glass-panel rounded-xl overflow-hidden flex flex-col md:flex-row animate-fade-in border border-white/10 mb-4';
             card.style.animationDelay = `${index * 100}ms`;
 
             card.innerHTML = `
@@ -149,7 +160,7 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
                         ? `<img src="${savedImage}" class="w-full h-full object-cover cursor-pointer" id="img-scene-${index}">`
                         : `<div id="placeholder-scene-${index}" class="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
                                 <i class="ph ph-image text-4xl mb-2 opacity-50"></i>
-                                <p class="text-xs">Klik Generate</p>
+                                <p class="text-xs">Klik Render Image</p>
                            </div>
                            <img id="img-scene-${index}" class="hidden w-full h-full object-cover cursor-pointer">`
                     }
@@ -162,7 +173,7 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
 
                     <!-- Action Buttons (Overlay) -->
                     <div class="absolute bottom-4 right-4 flex gap-2">
-                        <button id="btn-dl-scene-${index}" class="p-2 rounded-lg bg-black/60 hover:bg-accent text-white backdrop-blur-md border border-white/10 transition-all ${savedImage ? '' : 'hidden'}">
+                        <button id="btn-dl-scene-${index}" class="p-2 rounded-lg bg-black/60 hover:bg-accent text-white backdrop-blur-md border border-white/10 transition-all ${savedImage ? '' : 'hidden'}" title="Download">
                             <i class="ph ph-download-simple"></i>
                         </button>
                         <button id="btn-gen-scene-${index}" class="px-4 py-2 rounded-lg btn-neon text-xs font-bold flex items-center gap-2 shadow-lg">
@@ -198,18 +209,27 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
                 });
             }
             
-            // 4. View Fullscreen
+            // 4. View Fullscreen (Pake Modal Tab 3 kalau ada, atau window.open)
             const imgEl = document.getElementById(`img-scene-${index}`);
             if(imgEl) {
                 imgEl.addEventListener('click', () => {
-                    if(scene.imageUrl) openImageModal(scene.imageUrl); // Pake fungsi modal dari Tab 3 (kalo global) atau buat baru
+                    if(scene.imageUrl) {
+                        // Coba panggil modal global dari Tab 3
+                        const modal = document.getElementById('image-viewer-modal');
+                        if(modal) {
+                            document.getElementById('full-image-preview').src = scene.imageUrl;
+                            modal.classList.remove('hidden');
+                        } else {
+                            window.open(scene.imageUrl, '_blank');
+                        }
+                    }
                 });
             }
         });
     }
 
     // =================================================================
-    // C. LOGIC GENERATE IMAGE (THE TRINITY CONSISTENCY)
+    // C. LOGIC GENERATE IMAGE (FACE LOCK & 3D STYLE)
     // =================================================================
     function generateSceneImage(scene, index) {
         const loader = document.getElementById(`loader-scene-${index}`);
@@ -222,14 +242,11 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
         // 1. CARI REFERENSI KARAKTER (Face Lock)
         let refImage = null;
         
-        // Cek karakter mana yang ada di scene ini
         if (scene.characters_in_scene && scene.characters_in_scene.length > 0) {
-            // Kita ambil karakter PERTAMA yang muncul di list sebagai referensi utama
-            // (Keterbatasan API biasanya cuma support 1 ref image yang kuat)
+            // Ambil karakter pertama
             const mainCharName = scene.characters_in_scene[0];
             
-            // Cek di AppState Tab 3 apakah karakter ini punya gambar?
-            // Kita cari yang namanya mengandung string (case insensitive)
+            // Cari URL di AppState (Case Insensitive)
             const savedChars = AppState.characters.generatedImages;
             const matchKey = Object.keys(savedChars).find(key => key.toLowerCase().includes(mainCharName.toLowerCase()));
             
@@ -239,31 +256,32 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
             }
         }
 
-        // 2. RAKIT PROMPT (Prompt Engineering)
-        // Request Lu: "wajah dan tubuh harus sama persis jangan di ubah tapi make bahasa inggris"
+        // 2. RAKIT PROMPT (3D PIXAR STYLE)
         let consistencyPrompt = "";
         if (refImage) {
-            consistencyPrompt = "(Same face and body as reference image:1.6), (Consistent character design:1.4), ";
+            // Prompt khusus biar wajah mirip tapi pose bebas
+            consistencyPrompt = "(Same character as reference:1.5), ";
         }
 
-        const finalPrompt = `${consistencyPrompt}${scene.visual_prompt}, ${AppState.style.masterPrompt || "cinematic"}, masterpiece, 8k`;
+        // Gabungkan: [Konsistensi] + [Prompt Scene] + [Style 3D]
+        const finalPrompt = `${consistencyPrompt}${scene.visual_prompt}, (3D Render:1.3), (Disney Pixar Style), (Cute), (Volumetric Lighting), masterpiece, 8k`;
 
         // 3. CONFIG
         const options = {
             width: AppState.style.width || 1280,
             height: AppState.style.height || 720,
-            model: AppState.style.selectedModel || 'seedream',
-            seed: scene.seed || Math.floor(Math.random() * 1000000), // Kunci seed per scene
-            refImage: refImage // Kirim URL referensi ke api.js
+            model: AppState.style.selectedModel || 'seedream', // Seedream bagus buat 3D
+            seed: scene.seed || Math.floor(Math.random() * 1000000), 
+            refImage: refImage // Kirim URL referensi
         };
 
-        // Simpan seed biar kalau dirender ulang hasilnya konsisten (cuma berubah dikit kalau prompt diedit)
+        // Simpan seed
         scene.seed = options.seed; 
 
         // 4. GENERATE URL
-        // Tambah negative prompt standar
         let url = generateImageURL(finalPrompt, options);
-        url += `&negative_prompt=${encodeURIComponent("text, watermark, blurry, bad anatomy, distorted face, extra limbs")}`;
+        // Negative prompt biar gak jadi 2D/Sketch
+        url += `&negative_prompt=${encodeURIComponent("sketch, 2d, drawing, painting, bad anatomy, blurry, text, watermark")}`;
         url += `&t=${Date.now()}`;
 
         // 5. LOAD IMAGE
@@ -277,7 +295,6 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
             }
             if(btnDl) btnDl.classList.remove('hidden');
 
-            // Simpan URL ke State
             scene.imageUrl = url;
             saveProject();
         };
@@ -291,7 +308,7 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
     }
 
     // =================================================================
-    // D. HELPER (Download & Modal - Copy dari Tab 3 biar mandiri)
+    // D. HELPER DOWNLOAD
     // =================================================================
     async function downloadImage(url, filename) {
         try {
@@ -305,25 +322,6 @@ IMPORTANT: "characters_in_scene" must match the names used in the story exactly.
             link.click();
             document.body.removeChild(link);
         } catch (e) { window.open(url, '_blank'); }
-    }
-
-    function openImageModal(url) {
-        // Cek apakah modal global udah ada (dari Tab 3)
-        let modal = document.getElementById('image-viewer-modal');
-        if (!modal) {
-            // Kalau belum ada, buat baru (fallback)
-            const html = `
-            <div id="image-viewer-modal" class="fixed inset-0 z-[130] hidden flex items-center justify-center">
-                <div class="absolute inset-0 bg-black/95 backdrop-blur-md" onclick="this.parentElement.classList.add('hidden')"></div>
-                <img id="full-image-preview" src="" class="relative max-w-[95%] max-h-[90vh] rounded-lg shadow-2xl">
-                <button class="absolute top-4 right-4 text-white" onclick="document.getElementById('image-viewer-modal').classList.add('hidden')"><i class="ph ph-x text-3xl"></i></button>
-            </div>`;
-            document.body.insertAdjacentHTML('beforeend', html);
-            modal = document.getElementById('image-viewer-modal');
-        }
-        const img = document.getElementById('full-image-preview');
-        if(img) img.src = url;
-        modal.classList.remove('hidden');
     }
 
     if (btnNext) {
