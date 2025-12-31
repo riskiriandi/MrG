@@ -1,29 +1,22 @@
 /**
  * js/tabs/tab3.js
- * Logika Tab 3: Character Casting.
- * Menggabungkan Data Karakter (Tab 1) + Style (Tab 2) menjadi Gambar Visual.
+ * Logika Tab 3: Character Casting (Final Version).
+ * Fitur: Modal Edit Prompt, Download Asli, View Fullscreen, Pose Fix.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. AMBIL ELEMENT DOM
     const charGrid = document.getElementById('char-grid');
-    const btnGenAll = document.getElementById('btn-generate-all-chars'); // Pastikan ID di HTML sesuai (btn-gen-all-chars atau btn-generate-all-chars)
-    // Cek ID tombol di HTML lu, kalau beda sesuaikan. Di index.html yg gw kasih ID-nya: btn-generate-all-chars
-    
+    const btnGenAll = document.getElementById('btn-generate-all-chars');
     const btnNext = document.getElementById('btn-next-to-scenes');
-
-    // Listener khusus saat Tab 3 dibuka (biar data selalu fresh)
-    // Kita pakai MutationObserver atau event listener di tombol tab, 
-    // tapi cara paling gampang: Pasang interval cek atau expose fungsi refresh.
-    // Disini kita pakai cara simple: Tiap kali user klik tab 3, fungsi ini dipanggil via main.js (kalau ada hook),
-    // tapi karena kita gak pake hook kompleks, kita pasang listener di tombol tab navigasi aja.
-    
     const tab3Btn = document.querySelector('button[data-tab="3"]');
-    if (tab3Btn) {
-        tab3Btn.addEventListener('click', loadCharacters);
-    }
 
-    // Load juga saat pertama kali file ini jalan (kalau user refresh di tab 3)
+    // Inject Modal Editor & Preview ke Body
+    createImageModal();
+    createPromptEditorModal();
+
+    // Listener Refresh Data
+    if (tab3Btn) tab3Btn.addEventListener('click', loadCharacters);
     loadCharacters();
 
     // =================================================================
@@ -32,65 +25,66 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadCharacters() {
         const chars = AppState.story.characters;
         
-        // 1. Cek apakah ada karakter?
         if (!chars || chars.length === 0) {
             charGrid.innerHTML = `
                 <div class="col-span-full text-center py-20 text-gray-500 border border-dashed border-white/10 rounded-xl">
                     <i class="ph ph-users text-4xl mb-2 opacity-50"></i>
                     <p>Belum ada data karakter.</p>
-                    <button onclick="window.switchTab(1)" class="text-accent hover:underline mt-2">
-                        Buat cerita dulu di Tab 1
-                    </button>
-                </div>
-            `;
+                </div>`;
             if(btnGenAll) btnGenAll.classList.add('hidden');
             return;
         }
 
         if(btnGenAll) btnGenAll.classList.remove('hidden');
-
-        // 2. Render Kartu
-        charGrid.innerHTML = ''; // Bersihkan grid
+        charGrid.innerHTML = ''; 
         
         chars.forEach((char, index) => {
-            // Cek apakah sudah ada gambar tersimpan di state?
             const savedImage = AppState.characters.generatedImages[char.name];
             
             const card = document.createElement('div');
             card.className = 'glass-panel rounded-xl overflow-hidden flex flex-col relative group animate-fade-in';
-            // Delay animasi biar muncul satu-satu cantik
             card.style.animationDelay = `${index * 100}ms`;
 
             card.innerHTML = `
                 <!-- HEADER -->
-                <div class="p-3 border-b border-white/10 flex justify-between items-center bg-black/20">
-                    <h3 class="font-bold text-white text-sm truncate">${char.name}</h3>
-                    <span class="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
-                        ${AppState.style.selectedModel || 'seedream'}
-                    </span>
+                <div class="p-3 border-b border-white/10 flex justify-between items-center bg-black/40">
+                    <h3 class="font-bold text-white text-sm truncate w-2/3">${char.name}</h3>
+                    <button id="btn-edit-${index}" class="text-[10px] bg-white/10 hover:bg-accent hover:text-white px-2 py-1 rounded transition-colors flex items-center gap-1">
+                        <i class="ph ph-pencil-simple"></i> Edit Prompt
+                    </button>
                 </div>
 
                 <!-- IMAGE AREA -->
-                <div class="relative aspect-[2/3] bg-black/50 flex items-center justify-center overflow-hidden">
+                <div class="relative aspect-[2/3] bg-black/50 flex items-center justify-center overflow-hidden group/img">
                     ${savedImage 
-                        ? `<img src="${savedImage}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" id="img-${index}">`
+                        ? `<img src="${savedImage}" class="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105 cursor-pointer" id="img-${index}">`
                         : `<div id="placeholder-${index}" class="text-center p-4">
                                 <i class="ph ph-user text-4xl text-gray-600 mb-2"></i>
-                                <p class="text-[10px] text-gray-500">Belum digenerate</p>
+                                <p class="text-[10px] text-gray-500">Siap Digenerate</p>
                            </div>
-                           <img id="img-${index}" class="hidden w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">`
+                           <img id="img-${index}" class="hidden w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105 cursor-pointer">`
                     }
                     
+                    <!-- OVERLAY BUTTONS (View & Download) -->
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
+                        <button id="btn-view-${index}" class="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-md transition-transform hover:scale-110" title="Lihat Fullscreen">
+                            <i class="ph ph-eye text-xl"></i>
+                        </button>
+                        <button id="btn-download-${index}" class="p-3 rounded-full bg-white/10 hover:bg-accent text-white border border-white/20 backdrop-blur-md transition-transform hover:scale-110" title="Download HD">
+                            <i class="ph ph-download-simple text-xl"></i>
+                        </button>
+                    </div>
+
                     <!-- Loading Overlay -->
-                    <div id="loader-${index}" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center hidden z-20">
+                    <div id="loader-${index}" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center hidden z-30">
                         <i class="ph ph-spinner animate-spin text-accent text-2xl mb-2"></i>
                         <span class="text-[10px] text-gray-300">Generating...</span>
                     </div>
                 </div>
 
                 <!-- FOOTER ACTIONS -->
-                <div class="p-3 border-t border-white/10 mt-auto">
-                    <button id="btn-gen-${index}" class="w-full py-2 rounded-lg text-xs font-bold transition-all ${savedImage ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'btn-neon'}">
+                <div class="p-3 border-t border-white/10 mt-auto bg-black/20">
+                    <button id="btn-gen-${index}" class="w-full py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${savedImage ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'btn-neon'}">
                         ${savedImage ? '<i class="ph ph-arrows-clockwise"></i> Regenerate' : '<i class="ph ph-lightning"></i> Generate'}
                     </button>
                 </div>
@@ -98,56 +92,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
             charGrid.appendChild(card);
 
-            // Event Listener per Kartu
+            // --- EVENT LISTENERS ---
+            
+            // 1. Edit Prompt
+            document.getElementById(`btn-edit-${index}`).addEventListener('click', () => {
+                openPromptEditor(char, index);
+            });
+
+            // 2. Generate Button
             document.getElementById(`btn-gen-${index}`).addEventListener('click', () => {
-                generateSingleChar(char, index);
+                // Cek apakah user sudah edit prompt manual? Kalau belum, pake default.
+                const currentPrompt = char.customPrompt || constructDefaultPrompt(char);
+                generateSingleChar(char.name, currentPrompt, index);
+            });
+
+            // 3. View Fullscreen
+            document.getElementById(`btn-view-${index}`).addEventListener('click', () => {
+                const url = AppState.characters.generatedImages[char.name];
+                if(url) openImageModal(url);
+            });
+
+            // 4. Download
+            document.getElementById(`btn-download-${index}`).addEventListener('click', () => {
+                const url = AppState.characters.generatedImages[char.name];
+                if(url) downloadImage(url, `MrG_${char.name}.jpg`);
             });
         });
     }
 
     // =================================================================
-    // B. LOGIC GENERATE (SINGLE)
+    // B. LOGIC PROMPT & GENERATE
     // =================================================================
-    async function generateSingleChar(char, index) {
+    
+    function constructDefaultPrompt(char) {
+        // INI LOGIC BIAR POSE TEGAK & BACKGROUND POLOS
+        const style = AppState.style.masterPrompt || "cinematic";
+        
+        // Kita taruh "Character Sheet" di depan biar AI fokus ke desain karakter
+        // Tambahin "Simple Background" biar gak gambar bar/hutan
+        return `(Character Sheet Design:1.5), (Full Body Shot:1.3), (Neutral Pose), (Simple Grey Background), ${char.visual_desc}, ${style}, 8k resolution, masterpiece`;
+    }
+
+    async function generateSingleChar(charName, prompt, index) {
         const imgEl = document.getElementById(`img-${index}`);
         const placeholderEl = document.getElementById(`placeholder-${index}`);
         const loaderEl = document.getElementById(`loader-${index}`);
         const btnEl = document.getElementById(`btn-gen-${index}`);
 
-        // 1. UI Loading State
         if(loaderEl) loaderEl.classList.remove('hidden');
         if(btnEl) btnEl.disabled = true;
 
-        // 2. Siapkan Prompt (INJECTION LOGIC)
-        // Gabungan: [Style Master] + [Deskripsi Karakter] + [Pose Fix]
-        const stylePrompt = AppState.style.masterPrompt || "cinematic, detailed";
-        const charPrompt = char.visual_desc; // Ini udah bahasa Inggris dari Tab 1
-        
-        // INI REQUEST LU: "berdiri tegak kek biasa tanpa pose aneh aneh"
-        const poseInjection = "full body shot, standing straight, neutral pose, front view, character sheet design, plain neutral background, masterpiece, 8k";
-
-        const finalPrompt = `${stylePrompt}, ${charPrompt}, ${poseInjection}`;
-
-        // 3. Config Gambar
+        // Config Gambar (PORTRAIT RATIO)
         const options = {
-            width: 768,  // Portrait ratio buat karakter (biasanya lebih bagus 2:3)
+            width: 768,  
             height: 1024,
             model: AppState.style.selectedModel || 'seedream',
-            seed: Math.floor(Math.random() * 1000000) // Random seed tiap klik regenerate
+            seed: Math.floor(Math.random() * 1000000)
         };
 
-        console.log(`🎨 Generating ${char.name}...`, options);
+        // NEGATIVE PROMPT (PENTING BIAR GAK ADA BACKGROUND ANEH)
+        const negative = "text, watermark, low quality, blurry, complex background, scenery, furniture, multiple views, cropped, out of frame";
+        
+        // Build URL
+        let imageUrl = generateImageURL(prompt, options);
+        imageUrl += `&negative_prompt=${encodeURIComponent(negative)}`;
+        imageUrl += `&t=${Date.now()}`; // Anti-cache
 
-        // 4. Generate URL (Instant)
-        // Kita pake timestamp biar browser gak nge-cache gambar lama pas regenerate
-        const imageUrl = generateImageURL(finalPrompt, options) + `&t=${Date.now()}`;
-
-        // 5. Load Image
-        imgEl.onload = () => {
-            // Pas gambar udah keload
+        // Load Image
+        const tempImg = new Image();
+        tempImg.onload = () => {
             if(loaderEl) loaderEl.classList.add('hidden');
             if(placeholderEl) placeholderEl.classList.add('hidden');
             imgEl.classList.remove('hidden');
+            imgEl.src = imageUrl;
             
             if(btnEl) {
                 btnEl.disabled = false;
@@ -156,53 +173,137 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnEl.classList.add('bg-white/5', 'hover:bg-white/10', 'text-gray-300');
             }
 
-            // SIMPAN URL KE STATE (PENTING BUAT TAB 4)
-            AppState.characters.generatedImages[char.name] = imageUrl;
+            // Simpan URL
+            AppState.characters.generatedImages[charName] = imageUrl;
             saveProject();
         };
-
-        imgEl.onerror = () => {
+        
+        tempImg.onerror = () => {
             if(loaderEl) loaderEl.classList.add('hidden');
-            alert("Gagal memuat gambar. Coba ganti model atau cek koneksi.");
+            alert("Gagal generate. Coba lagi.");
             if(btnEl) btnEl.disabled = false;
         };
 
-        // Trigger Load
-        imgEl.src = imageUrl;
+        tempImg.src = imageUrl;
     }
 
     // =================================================================
-    // C. LOGIC GENERATE ALL
+    // C. MODAL EDITOR PROMPT
+    // =================================================================
+    function createPromptEditorModal() {
+        if (document.getElementById('prompt-editor-modal')) return;
+
+        const html = `
+        <div id="prompt-editor-modal" class="fixed inset-0 z-[120] hidden">
+            <div class="absolute inset-0 bg-black/90 backdrop-blur-sm" id="editor-backdrop"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg glass-panel rounded-2xl p-6 shadow-2xl">
+                <h3 class="text-lg font-bold text-white mb-1">Edit Prompt Karakter</h3>
+                <p class="text-xs text-gray-400 mb-4">Hapus kata-kata seperti "sitting", "in a bar", dll agar pose tegak.</p>
+                
+                <textarea id="editor-textarea" rows="6" class="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-xs text-gray-200 focus:border-accent focus:outline-none mb-4"></textarea>
+                
+                <div class="flex justify-end gap-2">
+                    <button id="btn-cancel-editor" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white">Batal</button>
+                    <button id="btn-save-generate" class="px-4 py-2 rounded-lg btn-neon text-xs font-bold flex items-center gap-2">
+                        <i class="ph ph-lightning"></i> Simpan & Generate
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        // Close Logic
+        const close = () => document.getElementById('prompt-editor-modal').classList.add('hidden');
+        document.getElementById('editor-backdrop').onclick = close;
+        document.getElementById('btn-cancel-editor').onclick = close;
+    }
+
+    function openPromptEditor(char, index) {
+        const modal = document.getElementById('prompt-editor-modal');
+        const textarea = document.getElementById('editor-textarea');
+        const btnSave = document.getElementById('btn-save-generate');
+
+        // Load prompt saat ini (atau default)
+        textarea.value = char.customPrompt || constructDefaultPrompt(char);
+        
+        modal.classList.remove('hidden');
+
+        // Override tombol save biar tau index mana yang di-generate
+        btnSave.onclick = () => {
+            // Simpan prompt custom ke object karakter di memory
+            char.customPrompt = textarea.value; 
+            // Generate ulang
+            generateSingleChar(char.name, char.customPrompt, index);
+            modal.classList.add('hidden');
+        };
+    }
+
+    // =================================================================
+    // D. MODAL FULLSCREEN IMAGE
+    // =================================================================
+    function createImageModal() {
+        if (document.getElementById('image-viewer-modal')) return;
+        const html = `
+        <div id="image-viewer-modal" class="fixed inset-0 z-[130] hidden flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/95 backdrop-blur-md" onclick="this.parentElement.classList.add('hidden')"></div>
+            <img id="full-image-preview" src="" class="relative max-w-[95%] max-h-[90vh] rounded-lg shadow-2xl border border-white/10">
+            <button class="absolute top-4 right-4 text-white/50 hover:text-white" onclick="document.getElementById('image-viewer-modal').classList.add('hidden')">
+                <i class="ph ph-x text-3xl"></i>
+            </button>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function openImageModal(url) {
+        const modal = document.getElementById('image-viewer-modal');
+        const img = document.getElementById('full-image-preview');
+        img.src = url;
+        modal.classList.remove('hidden');
+    }
+
+    // =================================================================
+    // E. HELPER DOWNLOAD
+    // =================================================================
+    async function downloadImage(url, filename) {
+        try {
+            // Fetch blob biar yang kedownload file asli, bukan html
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (e) {
+            console.error(e);
+            // Fallback kalau fetch gagal (misal cors), buka di tab baru
+            window.open(url, '_blank');
+        }
+    }
+
+    // =================================================================
+    // F. GENERATE ALL & NEXT
     // =================================================================
     if (btnGenAll) {
         btnGenAll.addEventListener('click', () => {
             const chars = AppState.story.characters;
             if (!chars || chars.length === 0) return;
-
             if(!confirm(`Generate ${chars.length} karakter sekaligus?`)) return;
 
-            // Loop semua karakter dan trigger generate
             chars.forEach((char, index) => {
-                // Kasih delay dikit biar gak nembak API barengan banget (opsional, tapi lebih aman)
                 setTimeout(() => {
-                    generateSingleChar(char, index);
-                }, index * 500);
+                    const prompt = char.customPrompt || constructDefaultPrompt(char);
+                    generateSingleChar(char.name, prompt, index);
+                }, index * 1000); // Delay 1 detik per request
             });
         });
     }
 
-    // =================================================================
-    // D. NAVIGASI
-    // =================================================================
     if (btnNext) {
-        btnNext.addEventListener('click', () => {
-            // Validasi: Minimal 1 karakter udah digenerate
-            const generatedCount = Object.keys(AppState.characters.generatedImages).length;
-            if (generatedCount === 0) {
-                alert("Generate minimal satu karakter dulu bro sebelum lanjut ke Scene!");
-                return;
-            }
-            window.switchTab(4);
-        });
+        btnNext.addEventListener('click', () => window.switchTab(4));
     }
 });
