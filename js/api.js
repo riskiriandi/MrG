@@ -1,7 +1,7 @@
 /**
  * js/api.js
  * Mengatur semua komunikasi ke API Eksternal (Pollinations & ImgBB).
- * UPDATE: FIX ERROR 400 (Menghapus parameter 'json' yang tidak valid di body request).
+ * VERSI STABIL: Menghapus parameter eksperimental yang menyebabkan Error 400.
  */
 
 const API_BASE_CHAT = 'https://gen.pollinations.ai/v1/chat/completions'; // Text & Vision
@@ -60,25 +60,18 @@ async function generateTextAI(messages, jsonMode = false) {
     };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-    // --- PERBAIKAN DI SINI ---
-    // Kita hapus properti 'json: true' karena itu bikin Error 400 di endpoint POST.
-    // Kita ganti dengan 'response_format' standar OpenAI, atau kita percayakan pada Prompt.
+    // --- PERBAIKAN TOTAL: KEMBALI KE BASIC ---
+    // Hapus semua parameter 'json' atau 'response_format'.
+    // Kita percayakan sepenuhnya pada System Prompt di Tab 1/4 untuk menghasilkan JSON string.
     
     const body = {
         model: "openai", 
         messages: messages,
-        temperature: 0.7,
-        // json: jsonMode,  <-- INI BIANG KEROKNYA (HAPUS)
+        temperature: 0.7
     };
 
-    // Opsional: Kalau mau maksa JSON object (hanya jalan di model GPT terbaru)
-    // Kalau error lagi, hapus blok if ini. Tapi standarnya begini:
-    if (jsonMode) {
-        body.response_format = { type: "json_object" };
-    }
-
     try {
-        console.log("🤖 Calling Pollinations API...", jsonMode ? "(JSON Mode)" : "");
+        console.log("🤖 Calling Pollinations API...", jsonMode ? "(Expect JSON)" : "");
         
         const response = await fetch(API_BASE_CHAT, {
             method: "POST",
@@ -87,28 +80,39 @@ async function generateTextAI(messages, jsonMode = false) {
         });
 
         if (!response.ok) {
-            // Baca error message dari server biar tau kenapa
             const errText = await response.text();
             console.error("API Error Details:", errText);
-            
-            if (response.status === 400) throw new Error("Error 400: Bad Request. Coba refresh atau cek console.");
-            if (response.status === 401) throw new Error("API Key Pollinations Salah/Expired.");
-            if (response.status === 500) throw new Error("Server Pollinations sedang sibuk.");
-            throw new Error(`API Error: ${response.status}`);
+            throw new Error(`API Error: ${response.status} - ${errText}`);
         }
 
         const data = await response.json();
         let content = data.choices[0].message.content;
 
-        // PARSING JSON
+        // PARSING JSON MANUAL (LEBIH AMAN)
         if (jsonMode) {
-            // Bersihin markdown ```json ... ```
-            content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+            // 1. Hapus Markdown Code Blocks (```json ... ```)
+            content = content.replace(/```json/g, '').replace(/```/g, '');
+            
+            // 2. Trim whitespace
+            content = content.trim();
+
+            // 3. Coba Parse
             try {
                 return JSON.parse(content); 
             } catch (e) {
                 console.error("JSON Parse Error. Raw Content:", content);
-                throw new Error("AI gagal membuat format JSON yang valid. Coba lagi.");
+                // Fallback: Kadang ada teks di depan/belakang JSON, kita coba cari kurung kurawal
+                const firstBracket = content.indexOf('{');
+                const lastBracket = content.lastIndexOf('}');
+                if (firstBracket !== -1 && lastBracket !== -1) {
+                    const cleanJson = content.substring(firstBracket, lastBracket + 1);
+                    try {
+                        return JSON.parse(cleanJson);
+                    } catch (e2) {
+                        throw new Error("AI gagal membuat format JSON yang valid.");
+                    }
+                }
+                throw new Error("AI gagal membuat format JSON yang valid.");
             }
         }
 
@@ -139,7 +143,7 @@ function generateImageURL(prompt, options = {}) {
 
     let url = `${API_BASE_IMAGE}${encodedPrompt}?width=${width}&height=${height}&model=${model}&seed=${seed}&nologo=true`;
 
-    // Fitur Image-to-Image (Opsional, kalau masih mau dipake)
+    // Fitur Image-to-Image (Hanya dipakai kalau refImage dikirim)
     if (options.refImage) {
         const encodedRef = safeEncode(options.refImage);
         url += `&image=${encodedRef}`;
