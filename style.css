@@ -1,42 +1,188 @@
-:root{
-  --bg:#0b0f14;
-  --card:#121826;
-  --primary:#6ce2ff;
-  --muted:#9aa4b2;
-  font-family:Inter,system-ui;
+/* =========================================
+   1. SETUP GLOBAL & FONT
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+:root {
+    --bg-dark: #050505;
+    --card-bg: rgba(30, 30, 36, 0.6);
+    --accent: #6366f1; /* Indigo/Purple Neon */
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --text-main: #ffffff;
+    --text-muted: #9ca3af;
+    --border: rgba(255, 255, 255, 0.08);
 }
-body{
-  margin:0;
-  background:radial-gradient(circle at 20% 10%,rgba(108,226,255,.08),transparent 40%),var(--bg);
-  color:#e6eef7;
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow-x: hidden; /* Mencegah scroll horizontal */
 }
-.brand-header{padding:20px;text-align:center}
-.logo-mrg{margin:0;font-size:2rem}
-.tagline{color:var(--muted)}
-.nav-bar{display:flex;gap:8px;justify-content:center}
-.nav-item{padding:8px 14px;border-radius:8px;cursor:pointer;color:var(--muted)}
-.nav-item.active{background:rgba(108,226,255,.15);color:var(--primary)}
-.container{max-width:900px;margin:auto;padding:20px}
-.tab{display:none}
-.tab.active{display:block}
-.card{
-  background:var(--card);
-  padding:16px;
-  border-radius:12px;
-  margin-bottom:16px;
-  transition:.25s;
+
+/* =========================================
+   2. BACKGROUND (ANIMASI & GRID)
+   ========================================= */
+.bg-pattern {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1;
+    background: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+    filter: blur(60px);
+    animation: pulseBg 10s infinite alternate;
 }
-.card:hover{transform:translateY(-2px)}
-textarea,input{width:100%;padding:10px;border-radius:8px;border:none;background:#0e1320;color:#fff}
-button{border:none;border-radius:8px;padding:10px 14px;cursor:pointer}
-.btn-primary{background:linear-gradient(90deg,#6ce2ff,#7b61ff);color:#04111a}
-.btn-next{margin-top:10px;background:#1b2235;color:#6ce2ff}
-.status{font-size:.8rem;color:var(--muted);margin-top:6px}
-.hidden{display:none}
-.char-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.char-tag{background:rgba(108,226,255,.2);padding:4px 8px;border-radius:14px;font-size:.7rem}
-.char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-.char-card{background:#0e1424;padding:10px;border-radius:10px;text-align:center}
-.char-card img{width:100%;border-radius:8px}
-.scene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.scene-box{background:#0e1424;padding:10px;border-radius:10px}
+
+.bg-grid {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.15;
+    mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+
+@keyframes pulseBg {
+    0% { opacity: 0.4; transform: scale(1); }
+    100% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* =========================================
+   3. KOMPONEN UI (GLASS & NEON)
+   ========================================= */
+.glass-panel {
+    background: var(--card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Tombol Neon Utama */
+.btn-neon {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 0 15px var(--accent-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-neon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.6);
+    filter: brightness(1.1);
+}
+
+.btn-neon:active {
+    transform: translateY(0);
+}
+
+.btn-neon:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(0.8);
+    box-shadow: none;
+}
+
+/* Input Field Gelap */
+.input-dark {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    color: white;
+    transition: all 0.3s;
+}
+
+.input-dark:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+    outline: none;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* =========================================
+   4. NAVIGASI TAB (PILL SHAPE)
+   ========================================= */
+
+/* Helper: Hilangkan Scrollbar tapi tetap bisa scroll */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.tab-btn {
+    flex: none; 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    border-radius: 99px; /* Pill Shape */
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tab-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: white;
+}
+
+.tab-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* =========================================
+   5. TAB 2 SPECIFIC (RATIO BUTTONS)
+   ========================================= */
+.ratio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ratio-btn.active {
+    /* Style active ditangani oleh Tailwind utility di HTML/JS, 
+       tapi ini backup kalau class tailwind ketimpa */
+    border-color: var(--accent);
+    color: white;
+}
+
+/* =========================================
+   6. ANIMASI & UTILS
+   ========================================= */
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Scrollbar Global */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Modal Backdrop Animation */
+#settings-modal:not(.hidden), #char-detail-modal:not(.hidden) {
+    animation: fadeIn 0.2s ease-out;
+  }
