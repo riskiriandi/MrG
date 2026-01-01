@@ -6,7 +6,7 @@ window.initStoryModule = () => {
         document.getElementById('story-input').value = story.rawIdea;
         updateDialogUI(story.useDialog);
         
-        // Kalau data sudah ada, render ulang
+        // Render ulang kalau data ada
         if(story.synopsis) {
             document.getElementById('story-result').classList.remove('hidden');
             document.getElementById('final-story-text').innerText = story.synopsis;
@@ -15,7 +15,6 @@ window.initStoryModule = () => {
     }
 };
 
-// Toggle Dialog UI
 window.toggleDialogMode = () => {
     const current = window.appState.project.story.useDialog;
     window.appState.project.story.useDialog = !current;
@@ -41,135 +40,154 @@ function updateDialogUI(isOn) {
     }
 }
 
-// === LOGIC UTAMA YANG DIPERBAIKI ===
+// === LOGIC GENERATE YANG SESUAI DOKUMENTASI ===
 window.generateStory = async () => {
     const input = document.getElementById('story-input').value;
-    if(!input) return showToast("Isi ide ceritanya dulu!", "error");
+    if(!input) return showToast("Isi dulu ide ceritanya bro!", "error");
 
     const btn = document.querySelector('button[onclick="generateStory()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Membedah Cerita...`;
+    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Generating...`;
     btn.disabled = true;
 
     try {
         const useDialog = window.appState.project.story.useDialog;
         
-        // PROMPT "GALAK" (FORCE JSON & DETAIL)
-        const systemPrompt = `
-            ROLE: Creative Director & Character Designer.
-            TASK: Expand the user's rough idea into a structured movie script.
+        // 1. PROMPT SEDERHANA TAPI TEGAS
+        // Kita minta JSON murni. Gak usah pake persona aneh-aneh.
+        const prompt = `
+            Task: Create a story based on: "${input}".
             
-            CRITICAL INSTRUCTIONS:
-            1. **INVENT NAMES**: If user says "3 cats", you MUST create 3 unique names (e.g., Zorg, Kiki, Rax). Do NOT use generic names like "Cat 1".
-            2. **VISUAL DETAILS**: For every character, describe their face, fur/skin color, clothing, and accessories in 'desc'.
-            3. **OUTPUT FORMAT**: You must output ONLY valid JSON. Do not write introduction text.
+            Requirements:
+            1. Create a Title.
+            2. Write a Synopsis (2 paragraphs).
+            3. Extract Characters: If the user says "3 cats", YOU MUST INVENT 3 NAMES (e.g., Tom, Jerry, Felix) and describe their visual appearance (fur color, clothes) in 'desc'.
+            4. Create 6 Scenes.
             
-            JSON STRUCTURE REQUIRED:
+            Output Format (JSON ONLY):
             {
-                "title": "Creative Title",
-                "synopsis": "A detailed summary of the plot (2 paragraphs).",
+                "title": "...",
+                "synopsis": "...",
                 "characters": [
-                    { 
-                        "name": "Name (e.g., Zorg)", 
-                        "desc": "Detailed visual prompt: Anthropomorphic cat, orange tabby fur, cybernetic left eye, wearing leather biker jacket, scar on nose." 
-                    }
+                    {"name": "...", "desc": "..."}
                 ],
-                "scenes": [
-                    "Scene 1: [Location] - Action description...",
-                    "Scene 2: [Location] - Action description..."
-                ]
+                "scenes": ["Scene 1...", "Scene 2..."]
             }
-
-            MODE: ${useDialog ? "Script with Dialogues" : "Descriptive Narrative"}
         `;
 
-        // Request ke Pollinations
-        const res = await fetch('https://text.pollinations.ai/', {
+        // 2. PANGGIL API (Sesuai Docs: POST /v1/chat/completions atau root text endpoint)
+        // Kita pake endpoint text default Pollinations yang support JSON flag
+        const response = await fetch('https://text.pollinations.ai/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: `Ide Kasar: ${input}` }
+                    { role: 'system', content: 'You are a helpful assistant that outputs strictly JSON.' },
+                    { role: 'user', content: prompt }
                 ],
-                model: 'openai', // OpenAI paling nurut soal JSON
-                json: true,
-                seed: Math.floor(Math.random() * 1000) // Biar gak bosenin
+                model: 'openai', // Model paling stabil buat JSON
+                json: true,      // Flag wajib dari Pollinations biar output JSON
+                seed: Math.floor(Math.random() * 1000)
             })
         });
 
-        const textResult = await res.text();
-        console.log("Raw AI Response:", textResult); // Cek console kalau error lagi
+        if (!response.ok) throw new Error("Gagal koneksi ke API Pollinations");
 
-        // PEMBERSIH JSON (Kadang AI ngasih markdown ```json ... ```)
-        let cleanJson = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+        const text = await response.text();
+        console.log("Raw Output:", text); // Cek console buat debug
+
+        // 3. PARSING (Pembersihan Markdown)
+        // AI sering nambahin ```json di awal, kita hapus manual biar JSON.parse gak error
+        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         let data;
         try {
-            data = JSON.parse(cleanJson);
+            data = JSON.parse(cleanText);
         } catch (e) {
-            console.error("JSON Parse Error. Raw text:", cleanJson);
-            throw new Error("AI gagal membuat struktur data. Coba lagi.");
+            console.error("JSON Parse Error:", e);
+            // Fallback darurat kalau JSON rusak: Tampilkan teks mentah di sinopsis
+            data = {
+                title: "Generated Story",
+                synopsis: cleanText,
+                characters: [],
+                scenes: []
+            };
+            showToast("Format JSON rusak, tapi teks berhasil diambil.", "warning");
         }
 
-        // VALIDASI DATA (Pastikan ada characters)
-        if (!data.characters || data.characters.length === 0) {
-            throw new Error("AI tidak mendeteksi karakter. Coba perjelas input.");
-        }
-
-        // SIMPAN KE STATE
+        // 4. SIMPAN KE STATE
         window.appState.project.story.rawIdea = input;
-        window.appState.project.story.title = data.title;
-        window.appState.project.story.synopsis = data.synopsis;
+        window.appState.project.story.title = data.title || "Untitled";
+        window.appState.project.story.synopsis = data.synopsis || "";
         
         // Map Scenes
-        window.appState.project.story.scripts = data.scenes.map((text, i) => ({
-            id: i+1, text: text, img: null
-        }));
-        
-        // Map Characters (Hanya update, jangan reset gambar yg udah ada kalau namanya sama)
-        const newChars = data.characters.map(c => ({
-            name: c.name,
-            desc: c.desc,
-            img: null, 
-            seed: null
-        }));
-        window.appState.project.characters = newChars;
+        if (data.scenes && Array.isArray(data.scenes)) {
+            window.appState.project.story.scripts = data.scenes.map((txt, i) => ({
+                id: i+1, text: txt, img: null
+            }));
+        }
 
-        // UPDATE UI
+        // Map Characters (Penting!)
+        if (data.characters && Array.isArray(data.characters)) {
+            window.appState.project.characters = data.characters.map(c => ({
+                name: c.name || "Unknown",
+                desc: c.desc || "No description",
+                img: null,
+                seed: null
+            }));
+        }
+
+        // 5. RENDER UI
         document.getElementById('story-result').classList.remove('hidden');
         
-        // Tampilkan Sinopsis
-        document.getElementById('final-story-text').innerHTML = `
-            <h3 class="text-xl font-bold text-accent mb-2">${data.title}</h3>
-            <p>${data.synopsis}</p>
+        // Render Teks
+        const finalDiv = document.getElementById('final-story-text');
+        finalDiv.innerHTML = `
+            <h3 class="text-xl font-bold text-accent mb-4">${data.title}</h3>
+            <div class="whitespace-pre-wrap">${data.synopsis}</div>
         `;
-        
-        // Tampilkan Badge Karakter
-        renderExtractedChars();
-        
-        showToast(`Berhasil! Ditemukan ${data.characters.length} Karakter.`, "success");
 
-    } catch (e) {
-        console.error(e);
-        showToast(e.message, "error");
+        // Render Karakter
+        renderExtractedChars();
+
+        if(data.characters.length > 0) {
+            showToast(`Berhasil! ${data.characters.length} Karakter dibuat.`, "success");
+        } else {
+            showToast("Cerita jadi, tapi karakter tidak terdeteksi otomatis.", "warning");
+        }
+
+    } catch (error) {
+        console.error(error);
+        showToast("Error: " + error.message, "error");
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 };
 
-// Render List Karakter di Tab 1 (Biar lu tau AI dapet siapa aja)
+// Render List Karakter (Kotak-kotak kecil di bawah cerita)
 function renderExtractedChars() {
     const list = document.getElementById('extracted-chars-list');
     const chars = window.appState.project.characters;
     
     if(!list) return;
 
+    if (chars.length === 0) {
+        list.innerHTML = `<span class="text-xs text-gray-500 italic">Tidak ada karakter spesifik.</span>`;
+        return;
+    }
+
     list.innerHTML = chars.map(c => `
-        <div class="flex flex-col bg-white/5 border border-white/10 rounded-lg p-3 max-w-[150px]">
-            <span class="font-bold text-accent text-xs truncate">${c.name}</span>
-            <span class="text-[10px] text-gray-400 line-clamp-3 leading-tight mt-1">${c.desc}</span>
+        <div class="bg-white/5 border border-white/10 rounded-lg p-3 w-full md:w-48">
+            <div class="flex items-center gap-2 mb-1">
+                <div class="w-2 h-2 rounded-full bg-accent"></div>
+                <span class="font-bold text-white text-sm truncate">${c.name}</span>
+            </div>
+            <p class="text-[10px] text-gray-400 line-clamp-3 leading-relaxed border-t border-white/5 pt-1 mt-1">
+                ${c.desc}
+            </p>
         </div>
     `).join('');
-        }
+                                 }
