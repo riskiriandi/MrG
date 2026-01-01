@@ -62,28 +62,57 @@ window.switchTab = (tabIndex) => {
     }, 300); // Tunggu 300ms biar animasi out selesai
 };
 
-// 3. Fungsi Toggle Settings Modal
+// js/main.js (Update bagian ini aja)
+
+// 1. FUNGSI TOGGLE YANG LEBIH STABIL
 window.toggleSettings = () => {
     const modal = document.getElementById('settings-modal');
+    const content = modal.querySelector('div[class*="absolute top-1/2"]'); // Ambil box kontennya
+
     if (modal.classList.contains('hidden')) {
-        // Buka
+        // BUKA MODAL
         modal.classList.remove('hidden');
-        // Hack dikit biar animasi CSS jalan (tunggu browser render class remove dulu)
-        setTimeout(() => {
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.querySelector('div[class*="scale-95"]').classList.remove('scale-95');
-            modal.querySelector('div[class*="scale-95"]').classList.add('scale-100');
-        }, 10);
-    } else {
-        // Tutup
-        modal.classList.add('opacity-0', 'pointer-events-none');
-        modal.querySelector('div[class*="scale-100"]').classList.remove('scale-100');
-        modal.querySelector('div[class*="scale-100"]').classList.add('scale-95');
         
+        // Load value API Key yang tersimpan ke input
+        const currentConfig = window.appState.config;
+        document.getElementById('input-imgbb-key').value = currentConfig.imgbbKey || '';
+        document.getElementById('input-polli-key').value = currentConfig.pollinationsKey || '';
+
+        // Animasi Masuk (Kasih delay dikit biar browser render 'block' dulu)
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        });
+    } else {
+        // TUTUP MODAL
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        // Tunggu animasi selesai baru hide (300ms sesuai duration di CSS)
         setTimeout(() => {
             modal.classList.add('hidden');
         }, 300);
     }
+};
+
+// 2. FUNGSI SAVE DARI UI
+window.handleSaveSettings = () => {
+    const imgbb = document.getElementById('input-imgbb-key').value.trim();
+    const polli = document.getElementById('input-polli-key').value.trim();
+
+    if(!imgbb) {
+        showToast("ImgBB Key wajib diisi bro!", "error");
+        return;
+    }
+
+    // Panggil fungsi save di state.js
+    window.saveSettings(polli, imgbb);
+    
+    // Tutup modal
+    toggleSettings();
+    showToast("Konfigurasi berhasil disimpan!", "success");
 };
 
 // 4. Global Toast Notification (Penting buat UX)
