@@ -58,67 +58,57 @@ const Templates = {
                 </div>
             </div>
         </div>
-    `,
+    `, 
 
-    // TAB 2: STYLE (Upload & Vision)
+    // TAB 2: STYLE (ADA INPUT URL)
     tab2: `
         <div class="animate-fade-in-up max-w-6xl mx-auto pb-10">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
-                <!-- Kiri: Upload & Preview -->
                 <div class="lg:col-span-5 space-y-4">
                     <div class="glass-panel p-1 rounded-2xl relative overflow-hidden group">
                         <div id="upload-area" class="relative z-10 h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/10 m-2 rounded-xl hover:border-accent/50 transition-colors cursor-pointer bg-black/20">
-                            
-                            <!-- Default State -->
                             <div id="upload-placeholder" class="text-center p-6">
                                 <i class="ph ph-upload-simple text-3xl text-gray-500 mb-2"></i>
-                                <p class="text-xs text-gray-400">Upload Referensi Gambar</p>
-                                <p class="text-[10px] text-gray-600 mt-1">(Otomatis dianalisa AI)</p>
+                                <p class="text-xs text-gray-400">Upload Gambar</p>
                             </div>
-
-                            <!-- Preview State -->
                             <img id="style-preview-img" class="absolute inset-0 w-full h-full object-cover hidden rounded-xl">
-                            
                             <input type="file" id="style-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleStyleUpload(this)">
                         </div>
+                    </div>
+                    
+                    <!-- INPUT URL MANUAL -->
+                    <div class="flex gap-2">
+                        <input type="text" id="style-url-input" placeholder="Atau paste link gambar..." class="input-neon w-full text-xs">
+                        <button onclick="handleStyleUrl()" class="btn-primary px-3"><i class="ph ph-arrow-right"></i></button>
                     </div>
                     <p id="upload-status" class="text-center text-[10px] text-gray-500 h-4"></p>
                 </div>
 
-                <!-- Kanan: Config -->
                 <div class="lg:col-span-7 space-y-6">
                     <div class="glass-panel p-6 rounded-2xl">
                         <h3 class="text-sm font-bold text-white mb-4">Visual Configuration</h3>
-                        
-                        <!-- Ratio -->
                         <div class="mb-6">
                             <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Aspect Ratio</label>
                             <div class="grid grid-cols-3 gap-2">
-                                <button onclick="setRatio('1:1')" id="ratio-1-1" class="ratio-btn active p-2 rounded border border-accent bg-accent/10 text-white text-xs font-bold">1:1 (Square)</button>
-                                <button onclick="setRatio('16:9')" id="ratio-16-9" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">16:9 (Cinema)</button>
-                                <button onclick="setRatio('9:16')" id="ratio-9-16" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">9:16 (Mobile)</button>
+                                <button onclick="setRatio('1:1')" id="ratio-1-1" class="ratio-btn active p-2 rounded border border-accent bg-accent/10 text-white text-xs font-bold">1:1</button>
+                                <button onclick="setRatio('16:9')" id="ratio-16-9" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">16:9</button>
+                                <button onclick="setRatio('9:16')" id="ratio-9-16" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">9:16</button>
                             </div>
                         </div>
-
-                        <!-- Prompt -->
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Master Style Prompt</label>
-                            <textarea id="style-prompt" rows="4" class="input-neon w-full text-xs leading-relaxed" placeholder="Deskripsi style akan muncul otomatis disini setelah upload gambar..."></textarea>
+                            <textarea id="style-prompt" rows="4" class="input-neon w-full text-xs leading-relaxed" placeholder="Deskripsi style..."></textarea>
                         </div>
                     </div>
-
                     <div class="flex justify-end">
-                        <button onclick="switchTab(3)" class="btn-primary">
-                            Simpan & Lanjut Karakter <i class="ph ph-arrow-right"></i>
-                        </button>
+                        <button onclick="switchTab(3)" class="btn-primary">Lanjut Karakter <i class="ph ph-arrow-right"></i></button>
                     </div>
                 </div>
             </div>
         </div>
     `,
 
-    // TAB 3: CHARACTERS (Grid Container)
+    // TAB 3: CHARACTERS (EDITOR MODE)
     tab3: `
         <div class="animate-fade-in-up max-w-6xl mx-auto pb-20">
             <div class="flex justify-between items-center mb-6">
@@ -128,8 +118,8 @@ const Templates = {
                 </button>
             </div>
             
-            <!-- Grid Container (Diisi oleh charModule.js) -->
-            <div id="char-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            <!-- Grid Container -->
+            <div id="char-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
             <div class="flex justify-end pt-8">
                 <button onclick="switchTab(4)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
@@ -137,6 +127,12 @@ const Templates = {
                 </button>
             </div>
         </div>
+    `,
+
+    // TAB 4 & 5 (SAMA KAYA SEBELUMNYA)
+    tab4: `... (pakai kode tab4 lama) ...`,
+    tab5: `... (pakai kode tab5 lama) ...`
+};
     `,
 
     // TAB 4: SCENES (Grid Container)
