@@ -49,6 +49,11 @@ window.switchTab = (tabIndex) => {
             // Contoh: kalau di tab 2 ada slider, inisialisasi ulang disini
         } else {
             contentContainer.innerHTML = `<div class="p-10 text-center text-red-500">Error: Module ${tabIndex} not found.</div>`;
+       if(tabIndex === 1) window.initStoryModule();
+       if(tabIndex === 2) window.initStyleModule();
+       if(tabIndex === 3) window.initCharModule();
+       if(tabIndex === 4) window.initSceneModule();
+       if(tabIndex === 5) window.generateVideoPrompts();
         }
 
         // Efek Transisi Masuk
