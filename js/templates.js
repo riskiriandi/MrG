@@ -2,128 +2,169 @@
 
 const Templates = {
     
-    // TAB 1: STORY WRITER
+    // TAB 1: STORY (Ada Toggle Dialog)
     tab1: `
-        <div class="animate-fade-in-up max-w-5xl mx-auto space-y-8">
-            <!-- Header Section -->
+        <div class="animate-fade-in-up max-w-5xl mx-auto space-y-6">
             <div class="flex justify-between items-end border-b border-white/5 pb-4">
                 <div>
-                    <h2 class="text-3xl font-display font-bold text-white">Concept & Story</h2>
-                    <p class="text-sm text-gray-400 mt-1">Tulis ide kasarmu, biarkan AI merangkai naskahnya.</p>
-                </div>
-                <div class="flex items-center gap-3 bg-black/30 px-4 py-2 rounded-full border border-white/10">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mode:</span>
-                    <span class="text-xs font-bold text-accent">NARRATIVE V2</span>
-                </div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="glass-panel p-1 rounded-2xl relative group">
-                <div class="absolute -inset-0.5 bg-gradient-to-r from-accent to-purple-600 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
-                <div class="relative bg-darkbg/80 rounded-xl p-6">
-                    <label class="text-xs text-accent font-bold mb-3 block uppercase tracking-widest">
-                        <i class="ph ph-brain"></i> Raw Idea Input
-                    </label>
-                    <textarea id="story-input" 
-                        class="w-full h-40 bg-transparent text-gray-200 placeholder-gray-600 focus:outline-none resize-none text-lg leading-relaxed font-light"
-                        placeholder="Contoh: Seorang hacker bernama Neo menemukan bahwa dunianya hanyalah simulasi komputer..."></textarea>
-                    
-                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
-                        <span class="text-[10px] text-gray-500">AI Model: <span class="text-gray-300">OpenAI GPT-4o Compatible</span></span>
-                        <button onclick="generateStory()" class="btn-primary flex items-center gap-2">
-                            <i class="ph ph-magic-wand"></i>
-                            Generate Script
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Result Area (Hidden by default) -->
-            <div id="story-result" class="hidden space-y-6">
-                <div class="flex items-center gap-4">
-                    <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">AI Output</span>
-                    <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                </div>
-
-                <div class="glass-panel p-8 rounded-2xl border-l-4 border-accent relative overflow-hidden">
-                    <!-- Decorative BG -->
-                    <i class="ph ph-quotes text-9xl absolute -top-4 -right-4 text-white/5 rotate-12"></i>
-                    
-                    <div id="final-story-text" class="relative z-10 text-gray-300 leading-loose font-serif text-lg whitespace-pre-wrap"></div>
+                    <h2 class="text-2xl font-display font-bold text-white">Story Concept</h2>
+                    <p class="text-xs text-gray-400">AI akan mengubah ide kasar menjadi naskah terstruktur.</p>
                 </div>
                 
-                <div class="flex justify-end">
+                <!-- Toggle Dialog Mode -->
+                <div class="flex items-center gap-3 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Dialog Mode</span>
+                    <button id="toggle-dialog" onclick="toggleDialogMode()" class="w-10 h-5 rounded-full bg-gray-600 relative transition-colors duration-300">
+                        <div id="toggle-circle" class="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform duration-300"></div>
+                    </button>
+                    <span id="dialog-status" class="text-[10px] font-bold text-gray-500">OFF</span>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-2xl">
+                <label class="text-xs text-accent font-bold mb-2 block uppercase tracking-widest">IDE CERITA / SINOPSIS KASAR:</label>
+                <textarea id="story-input" 
+                    class="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-gray-200 focus:border-accent focus:outline-none resize-none text-sm"
+                    placeholder="Contoh: Jono si cyborg pemalu naksir Siti penjual bakso di planet Mars..."></textarea>
+                
+                <div class="flex justify-end mt-4">
+                    <button onclick="generateStory()" class="btn-primary flex items-center gap-2 text-sm">
+                        <i class="ph ph-magic-wand"></i> Generate Naskah
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Area -->
+            <div id="story-result" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-accent">
+                    <h3 class="text-sm font-bold text-white mb-2 uppercase">Master Script</h3>
+                    <div id="final-story-text" class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-mono bg-black/30 p-4 rounded-lg"></div>
+                </div>
+                
+                <!-- List Karakter Terdeteksi -->
+                <div class="glass-panel p-4 rounded-2xl">
+                    <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase flex items-center gap-2">
+                        <i class="ph ph-users"></i> Karakter Terdeteksi (Auto-Extracted)
+                    </h3>
+                    <div id="extracted-chars-list" class="flex flex-wrap gap-2">
+                        <!-- Badge Karakter bakal muncul disini -->
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
                     <button onclick="switchTab(2)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
-                        Next: Visual Style <i class="ph ph-arrow-right"></i>
+                        Lanjut ke Style <i class="ph ph-arrow-right"></i>
                     </button>
                 </div>
             </div>
         </div>
     `,
 
-    // TAB 2: VISUAL STYLE
+    // TAB 2: STYLE (Upload & Vision)
     tab2: `
         <div class="animate-fade-in-up max-w-6xl mx-auto pb-10">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                <!-- Left Column: Controls -->
-                <div class="lg:col-span-4 space-y-6">
-                    <div class="glass-panel p-6 rounded-2xl">
-                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <i class="ph ph-faders text-accent"></i> Configuration
-                        </h3>
-                        
-                        <!-- Aspect Ratio -->
-                        <div class="mb-6">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-3 block">Aspect Ratio</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button onclick="setRatio('1:1')" class="ratio-btn active p-3 rounded-lg border border-accent bg-accent/10 text-white text-xs font-bold transition-all">1:1</button>
-                                <button onclick="setRatio('16:9')" class="ratio-btn p-3 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400 text-xs font-bold transition-all">16:9</button>
-                                <button onclick="setRatio('9:16')" class="ratio-btn p-3 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400 text-xs font-bold transition-all">9:16</button>
+                <!-- Kiri: Upload & Preview -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="glass-panel p-1 rounded-2xl relative overflow-hidden group">
+                        <div id="upload-area" class="relative z-10 h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/10 m-2 rounded-xl hover:border-accent/50 transition-colors cursor-pointer bg-black/20">
+                            
+                            <!-- Default State -->
+                            <div id="upload-placeholder" class="text-center p-6">
+                                <i class="ph ph-upload-simple text-3xl text-gray-500 mb-2"></i>
+                                <p class="text-xs text-gray-400">Upload Referensi Gambar</p>
+                                <p class="text-[10px] text-gray-600 mt-1">(Otomatis dianalisa AI)</p>
                             </div>
-                        </div>
 
-                        <!-- Style Input -->
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-3 block">Style Prompt</label>
-                            <textarea id="style-prompt" rows="4" class="input-neon w-full text-xs" placeholder="Describe the visual style (e.g., Cyberpunk, Ghibli, Noir)..."></textarea>
+                            <!-- Preview State -->
+                            <img id="style-preview-img" class="absolute inset-0 w-full h-full object-cover hidden rounded-xl">
+                            
+                            <input type="file" id="style-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleStyleUpload(this)">
                         </div>
                     </div>
+                    <p id="upload-status" class="text-center text-[10px] text-gray-500 h-4"></p>
                 </div>
 
-                <!-- Right Column: Preview -->
-                <div class="lg:col-span-8">
-                    <div class="glass-panel p-1 rounded-2xl h-full min-h-[400px] flex flex-col relative overflow-hidden group">
-                        <div class="absolute inset-0 bg-black/40 z-0"></div>
+                <!-- Kanan: Config -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h3 class="text-sm font-bold text-white mb-4">Visual Configuration</h3>
                         
-                        <!-- Upload Area -->
-                        <div id="style-upload-area" class="relative z-10 flex-grow flex flex-col items-center justify-center border-2 border-dashed border-white/10 m-4 rounded-xl hover:border-accent/50 transition-colors cursor-pointer group-hover:bg-white/5">
-                            <div class="text-center p-6">
-                                <div class="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10 group-hover:scale-110 transition-transform">
-                                    <i class="ph ph-image text-3xl text-gray-400 group-hover:text-accent"></i>
-                                </div>
-                                <h4 class="text-white font-bold">Upload Reference Image</h4>
-                                <p class="text-xs text-gray-500 mt-2">Or drag and drop here to analyze style</p>
+                        <!-- Ratio -->
+                        <div class="mb-6">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Aspect Ratio</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="setRatio('1:1')" id="ratio-1-1" class="ratio-btn active p-2 rounded border border-accent bg-accent/10 text-white text-xs font-bold">1:1 (Square)</button>
+                                <button onclick="setRatio('16:9')" id="ratio-16-9" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">16:9 (Cinema)</button>
+                                <button onclick="setRatio('9:16')" id="ratio-9-16" class="ratio-btn p-2 rounded border border-white/10 text-gray-400 text-xs font-bold">9:16 (Mobile)</button>
                             </div>
-                            <input type="file" class="absolute inset-0 opacity-0 cursor-pointer">
                         </div>
 
-                        <!-- Action Bar -->
-                        <div class="p-4 border-t border-white/10 relative z-10 bg-black/20 backdrop-blur-sm flex justify-between items-center">
-                            <span class="text-xs text-gray-400">AI Vision Model: <span class="text-accent">Active</span></span>
-                            <button onclick="switchTab(3)" class="btn-primary py-2 px-6 text-sm">
-                                Save Style & Continue
-                            </button>
+                        <!-- Prompt -->
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Master Style Prompt</label>
+                            <textarea id="style-prompt" rows="4" class="input-neon w-full text-xs leading-relaxed" placeholder="Deskripsi style akan muncul otomatis disini setelah upload gambar..."></textarea>
                         </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button onclick="switchTab(3)" class="btn-primary">
+                            Simpan & Lanjut Karakter <i class="ph ph-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     `,
 
-    // Placeholder buat tab lain biar gak error
-    tab3: `<div class="text-center py-20"><h2 class="text-2xl text-gray-500">Character Casting Module (Coming Soon)</h2></div>`,
-    tab4: `<div class="text-center py-20"><h2 class="text-2xl text-gray-500">Scene Director Module (Coming Soon)</h2></div>`,
-    tab5: `<div class="text-center py-20"><h2 class="text-2xl text-gray-500">Video Production Module (Coming Soon)</h2></div>`,
+    // TAB 3: CHARACTERS (Grid Container)
+    tab3: `
+        <div class="animate-fade-in-up max-w-6xl mx-auto pb-20">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">Character Casting</h2>
+                <button onclick="generateAllChars()" class="btn-primary text-xs px-4 py-2">
+                    <i class="ph ph-lightning"></i> Generate All
+                </button>
+            </div>
+            
+            <!-- Grid Container (Diisi oleh charModule.js) -->
+            <div id="char-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
+            <div class="flex justify-end pt-8">
+                <button onclick="switchTab(4)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
+                    Lanjut ke Scenes <i class="ph ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    `,
+
+    // TAB 4: SCENES (Grid Container)
+    tab4: `
+        <div class="animate-fade-in-up max-w-6xl mx-auto pb-20">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">Storyboard Director</h2>
+                <button onclick="generateAllScenes()" class="btn-primary text-xs px-4 py-2">
+                    <i class="ph ph-film-strip"></i> Render All Scenes
+                </button>
+            </div>
+
+            <!-- Grid Container (Diisi oleh sceneModule.js) -->
+            <div id="scenes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+
+            <div class="flex justify-end pt-8">
+                <button onclick="switchTab(5)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
+                    Lanjut ke Video <i class="ph ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    `,
+
+    // TAB 5: VIDEO (Prompt List)
+    tab5: `
+        <div class="animate-fade-in-up max-w-4xl mx-auto pb-20">
+            <h2 class="text-xl font-bold text-white mb-6">Video Production Prompts</h2>
+            <div id="video-list" class="space-y-4"></div>
+        </div>
+    `
 };
