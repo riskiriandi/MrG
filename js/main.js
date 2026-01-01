@@ -1,26 +1,22 @@
-// js/main.js
+// js/main.js (SAFETY VERSION)
 
-// 1. Inisialisasi saat web dibuka
 document.addEventListener('DOMContentLoaded', () => {
     console.log("MrG Engine v2.0 Started...");
-    
-    // Load Tab 1 secara default
-    switchTab(1);
-
-    // Cek apakah ada API Key tersimpan
-    const savedKey = localStorage.getItem('mrg_api_key');
-    if(savedKey) {
-        window.appState.config.apiKey = savedKey;
-        console.log("API Key loaded.");
+    try {
+        switchTab(1);
+        if(window.appState && window.appState.config) {
+            const savedKey = window.appState.config.pollinationsKey;
+            if(savedKey) console.log("API Key loaded.");
+        }
+    } catch (e) {
+        document.body.innerHTML = `<div style="color:red; padding:20px; text-align:center;">CRITICAL ERROR: ${e.message}</div>`;
     }
 });
 
-// 2. Fungsi Pindah Tab (Core Logic)
 window.switchTab = (tabIndex) => {
-    // A. Update UI Tombol Navigasi
+    // Update Nav
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
-        // Reset icon color
         const icon = btn.querySelector('i');
         if(icon) icon.classList.remove('text-accent');
     });
@@ -32,35 +28,46 @@ window.switchTab = (tabIndex) => {
         if(icon) icon.classList.add('text-accent');
     }
 
-    // B. Render Konten HTML dari Templates.js
+    // Render Content
     const contentContainer = document.getElementById('app-content');
-    
-    // Efek Transisi Keluar
+    if(!contentContainer) return;
+
     contentContainer.style.opacity = '0';
     contentContainer.style.transform = 'translateY(10px)';
 
     setTimeout(() => {
-        // Inject HTML baru
         const templateKey = `tab${tabIndex}`;
-        if (Templates[templateKey]) {
+        
+        // CEK APAKAH TEMPLATE ADA
+        if (Templates && Templates[templateKey]) {
             contentContainer.innerHTML = Templates[templateKey];
             
-            // Re-attach Event Listeners (Kalau ada logic khusus per tab)
-            // Contoh: kalau di tab 2 ada slider, inisialisasi ulang disini
+            // JALANKAN MODULE (Pake try-catch biar gak blank semua kalau satu error)
+            try {
+                if(tabIndex === 1 && window.initStoryModule) window.initStoryModule();
+                if(tabIndex === 2 && window.initStyleModule) window.initStyleModule();
+                if(tabIndex === 3 && window.initCharModule) window.initCharModule();
+                if(tabIndex === 4 && window.initSceneModule) window.initSceneModule();
+                if(tabIndex === 5 && window.generateVideoPrompts) window.generateVideoPrompts();
+            } catch (err) {
+                console.error(`Error init module tab ${tabIndex}:`, err);
+                showToast(`Error Module: ${err.message}`, 'error');
+            }
+
         } else {
-            contentContainer.innerHTML = `<div class="p-10 text-center text-red-500">Error: Module ${tabIndex} not found.</div>`;
-       if(tabIndex === 1) window.initStoryModule();
-       if(tabIndex === 2) window.initStyleModule();
-       if(tabIndex === 3) window.initCharModule();
-       if(tabIndex === 4) window.initSceneModule();
-       if(tabIndex === 5) window.generateVideoPrompts();
+            contentContainer.innerHTML = `<div class="p-10 text-center text-red-500">
+                Error: Template tab${tabIndex} tidak ditemukan.<br>
+                Cek file js/templates.js
+            </div>`;
         }
 
-        // Efek Transisi Masuk
         contentContainer.style.opacity = '1';
         contentContainer.style.transform = 'translateY(0)';
-    }, 300); // Tunggu 300ms biar animasi out selesai
+    }, 300);
 };
+
+// ... (Sisa fungsi toggleSettings, handleSaveSettings, showToast SAMA KAYA SEBELUMNYA) ...
+// Pastikan fungsi-fungsi itu tetap ada di bawah sini.
 
 // js/main.js (Update bagian ini aja)
 
