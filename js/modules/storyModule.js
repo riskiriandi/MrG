@@ -1,24 +1,32 @@
 // js/modules/storyModule.js
 
-// Init function dipanggil dari main.js pas ganti tab
 window.initStoryModule = () => {
     const story = window.appState.project.story;
-    if(document.getElementById('story-input')) {
-        document.getElementById('story-input').value = story.rawIdea;
-        updateDialogUI(story.useDialog);
+    
+    // 1. RE-POPULATE DATA (Biar gak hilang pas balik tab)
+    const inputField = document.getElementById('story-input');
+    if(inputField) {
+        inputField.value = story.rawIdea || "";
         
-        if(story.synopsis) {
-            document.getElementById('story-result').classList.remove('hidden');
-            document.getElementById('final-story-text').innerHTML = `
-                <h3 class="text-xl font-bold text-accent mb-4">${story.title}</h3>
-                <div class="whitespace-pre-wrap">${story.synopsis}</div>
-            `;
-            renderExtractedChars();
-        }
+        // AUTO-SAVE SAAT NGETIK (PENTING!)
+        inputField.addEventListener('input', (e) => {
+            window.appState.project.story.rawIdea = e.target.value;
+        });
+    }
+
+    updateDialogUI(story.useDialog);
+    
+    // Render ulang hasil kalau sudah ada
+    if(story.synopsis) {
+        document.getElementById('story-result').classList.remove('hidden');
+        document.getElementById('final-story-text').innerHTML = `
+            <h3 class="text-xl font-bold text-accent mb-4">${story.title}</h3>
+            <div class="whitespace-pre-wrap">${story.synopsis}</div>
+        `;
+        renderExtractedChars();
     }
 };
 
-// Toggle Dialog
 window.toggleDialogMode = () => {
     const current = window.appState.project.story.useDialog;
     window.appState.project.story.useDialog = !current;
@@ -46,71 +54,69 @@ function updateDialogUI(isOn) {
     }
 }
 
-// === LOGIC API ASLI (BUKAN TEMPLATE 2077) ===
 window.generateStory = async () => {
-    console.log("🚀 MEMULAI PROSES GENERATE STORY..."); // Cek Console Browser
-
     const input = document.getElementById('story-input').value;
     if(!input) return showToast("Isi dulu ide ceritanya bro!", "error");
 
     const btn = document.querySelector('button[onclick="generateStory()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Menghubungi AI...`;
+    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Meracik Cerita...`;
     btn.disabled = true;
 
     try {
         const useDialog = window.appState.project.story.useDialog;
         
-        // 1. SIAPKAN DATA YANG DIKIRIM
+        // === PROMPT CANGGIH (INDO STORY + ENGLISH VISUAL) ===
         const prompt = `
-            Task: Create a story based on: "${input}".
-            Requirements:
-            1. Title.
-            2. Synopsis (2 paragraphs).
-            3. Characters: Extract names and visual description (desc). If generic (e.g. "3 cats"), INVENT NAMES.
-            4. 6 Scenes.
+            ROLE: Expert Screenwriter & Character Designer.
+            INPUT: "${input}"
             
-            Output JSON ONLY:
+            TASK:
+            1. Write a Title (Indonesian).
+            2. Write a Synopsis (Indonesian, 2 paragraphs).
+            3. Extract Characters with VISUAL DESCRIPTIONS IN ENGLISH.
+            4. Create 6 Scenes (Indonesian).
+
+            CRITICAL RULES FOR CHARACTERS:
+            - **LANGUAGE**: Description ('desc') MUST be in ENGLISH (for Image Generator compatibility).
+            - **NON-HUMAN LOGIC**: If input says "Humanoid [Animal]", describe as "Anthropomorphic [Animal], standing on two legs, human-like proportions".
+            - **DETAIL**: Focus on physical traits (clothing, fur color, body type, face). NO abstract personality traits like "mata cekatan". Use literal descriptions like "sharp eyes, athletic build".
+            - **NAMING**: If generic (e.g. "3 kucing"), INVENT unique names.
+
+            OUTPUT FORMAT (JSON ONLY):
             {
-                "title": "...",
-                "synopsis": "...",
-                "characters": [{"name": "...", "desc": "..."}],
-                "scenes": ["..."]
+                "title": "Judul Indonesia",
+                "synopsis": "Sinopsis Indonesia...",
+                "characters": [
+                    { "name": "Name", "desc": "Anthropomorphic cat, orange fur, wearing leather jacket, full body standing pose..." }
+                ],
+                "scenes": ["Scene 1...", "Scene 2..."]
             }
         `;
 
-        console.log("📡 Mengirim Request ke Pollinations...");
-
-        // 2. PANGGIL API (FETCH ASLI)
         const response = await fetch('https://text.pollinations.ai/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [
-                    { role: 'system', content: 'You are a JSON generator.' },
+                    { role: 'system', content: 'You are a JSON generator. Output strictly JSON.' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'openai',
+                model: 'openai', // OpenAI paling nurut soal instruksi bahasa campuran
                 json: true,
                 seed: Math.floor(Math.random() * 10000)
             })
         });
 
-        console.log("✅ Response diterima:", response.status);
-
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-
+        if (!response.ok) throw new Error("API Error");
         const text = await response.text();
-        console.log("📄 Raw Data:", text); // Liat ini di console, ini bukti bukan template
-
-        // 3. BERSIHKAN DATA
         const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(cleanText);
 
-        // 4. SIMPAN KE STATE
+        // SIMPAN KE STATE
         window.appState.project.story.rawIdea = input;
-        window.appState.project.story.title = data.title || "Untitled";
-        window.appState.project.story.synopsis = data.synopsis || "";
+        window.appState.project.story.title = data.title;
+        window.appState.project.story.synopsis = data.synopsis;
         
         if (data.scenes) {
             window.appState.project.story.scripts = data.scenes.map((txt, i) => ({
@@ -124,18 +130,17 @@ window.generateStory = async () => {
             }));
         }
 
-        // 5. TAMPILKAN HASIL
+        // RENDER
         document.getElementById('story-result').classList.remove('hidden');
         document.getElementById('final-story-text').innerHTML = `
             <h3 class="text-xl font-bold text-accent mb-4">${data.title}</h3>
             <div class="whitespace-pre-wrap">${data.synopsis}</div>
         `;
         renderExtractedChars();
-        
-        showToast("Naskah Original Berhasil Dibuat!", "success");
+        showToast("Naskah & Karakter Siap!", "success");
 
     } catch (error) {
-        console.error("❌ ERROR:", error);
+        console.error(error);
         showToast("Gagal: " + error.message, "error");
     } finally {
         btn.innerHTML = originalText;
@@ -154,7 +159,8 @@ function renderExtractedChars() {
                 <div class="w-2 h-2 rounded-full bg-accent"></div>
                 <span class="font-bold text-white text-sm truncate">${c.name}</span>
             </div>
-            <p class="text-[10px] text-gray-400 line-clamp-3 mt-1">${c.desc}</p>
+            <!-- Tampilkan Deskripsi Inggris biar user bisa cek -->
+            <p class="text-[10px] text-gray-400 line-clamp-3 mt-1 italic">"${c.desc}"</p>
         </div>
     `).join('');
-                }
+            }
