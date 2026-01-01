@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MrG - AI Storyboard Production</title>
+    <title>MrG - AI Production Suite</title>
     
     <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,365 +15,163 @@
                     colors: {
                         darkbg: '#050505', 
                         accent: '#6366f1', 
-                        cardbg: 'rgba(30, 30, 36, 0.7)'
+                        accentHover: '#4f46e5',
+                        cardbg: 'rgba(20, 20, 25, 0.6)'
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        display: ['Orbitron', 'sans-serif'], /* Font Sci-Fi buat Header */
+                    },
+                    animation: {
+                        'spin-slow': 'spin 8s linear infinite',
+                        'pulse-glow': 'pulseGlow 3s infinite',
                     }
                 }
             }
         }
     </script>
 
-    <!-- CUSTOM STYLE -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- ICON LIBRARY -->
+    <!-- FONTS & ICONS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- CUSTOM CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-darkbg text-white min-h-screen font-sans overflow-x-hidden selection:bg-accent selection:text-white">
 
-    <!-- BACKGROUND ELEMENTS -->
-    <div class="fixed inset-0 z-[-2] opacity-30 pointer-events-none bg-pattern"></div>
+    <!-- BACKGROUND LAYERS (ANIMATED) -->
+    <div class="fixed inset-0 z-[-3] bg-darkbg"></div>
+    <div class="fixed inset-0 z-[-2] opacity-40 pointer-events-none bg-pattern animate-pan-bg"></div>
     <div class="fixed inset-0 z-[-1] pointer-events-none bg-grid"></div>
 
-    <div class="container mx-auto px-4 py-6 max-w-6xl relative z-10">
+    <!-- MAIN CONTAINER -->
+    <div class="container mx-auto px-4 py-6 max-w-7xl relative z-10 flex flex-col min-h-screen">
         
         <!-- HEADER -->
-        <header class="flex items-center justify-between mb-8 animate-fade-in glass-panel p-4 rounded-2xl">
-            <!-- LOGO -->
-            <div class="flex items-center gap-4">
-                <div class="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-                    <img src="logo.png" alt="MrG Logo" class="object-cover w-full h-full">
+        <header class="flex items-center justify-between mb-8 animate-fade-in-down">
+            <!-- LOGO AREA -->
+            <div class="flex items-center gap-5 group cursor-pointer">
+                <div class="relative w-14 h-14">
+                    <!-- Logo Glow Effect -->
+                    <div class="absolute inset-0 bg-accent rounded-xl blur-lg opacity-40 group-hover:opacity-70 transition-opacity duration-500 animate-pulse-glow"></div>
+                    <div class="relative w-full h-full rounded-xl overflow-hidden border border-white/10 bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-2xl">
+                        <!-- Ganti src ini dengan logo lu -->
+                        <span class="font-display font-black text-2xl text-white tracking-tighter">M</span>
+                    </div>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">MrG</h1>
-                    <p class="text-[10px] uppercase tracking-widest text-accent font-bold">AI Production Suite</p>
+                    <h1 class="text-3xl font-display font-bold tracking-wider text-white group-hover:text-accent transition-colors duration-300">
+                        Mr<span class="text-accent">G</span>
+                    </h1>
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold">System Online</p>
+                    </div>
                 </div>
             </div>
             
-            <!-- STATUS & SETTINGS BUTTON -->
-            <div class="flex items-center gap-4">
-                <div id="status-indicator" class="hidden md:flex px-3 py-1.5 rounded-full bg-black/40 text-green-400 text-xs border border-green-500/20 items-center gap-2 backdrop-blur-md">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>System Ready</span>
-                </div>
-
-                <button id="btn-open-settings" class="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 group relative">
-                    <i class="ph ph-gear text-xl text-gray-300 group-hover:text-white transition-colors"></i>
-                </button>
-            </div>
+            <!-- SETTINGS BUTTON -->
+            <button onclick="toggleSettings()" class="btn-icon group relative">
+                <div class="absolute inset-0 bg-accent/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <i class="ph ph-gear text-2xl text-gray-300 group-hover:text-white relative z-10 transition-transform group-hover:rotate-90 duration-500"></i>
+            </button>
         </header>
 
-        <!-- NAVIGATION TABS -->
-        <nav class="flex overflow-x-auto no-scrollbar gap-3 mb-6 p-1.5 glass-panel rounded-xl sticky top-4 z-50">
-            <button data-tab="1" class="tab-btn active">Story</button>
-            <button data-tab="2" class="tab-btn">Style</button>
-            <button data-tab="3" class="tab-btn">Characters</button>
-            <button data-tab="4" class="tab-btn">Scenes</button>
-            <button data-tab="5" class="tab-btn">Video</button>
+        <!-- NAVIGATION TABS (RESPONSIVE FIX) -->
+        <!-- Mobile: Scroll | Desktop: Full Grid -->
+        <nav class="glass-panel p-1.5 rounded-2xl mb-8 sticky top-4 z-50 shadow-2xl border border-white/10 backdrop-blur-xl">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-1 md:gap-2 overflow-x-auto md:overflow-visible no-scrollbar flex-nowrap flex md:grid">
+                
+                <button onclick="switchTab(1)" id="btn-tab-1" class="tab-btn active group">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i class="ph ph-book-open-text text-lg"></i>
+                        STORY
+                    </span>
+                    <div class="tab-glow"></div>
+                </button>
+
+                <button onclick="switchTab(2)" id="btn-tab-2" class="tab-btn group">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i class="ph ph-paint-brush-broad text-lg"></i>
+                        STYLE
+                    </span>
+                    <div class="tab-glow"></div>
+                </button>
+
+                <button onclick="switchTab(3)" id="btn-tab-3" class="tab-btn group">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i class="ph ph-users-three text-lg"></i>
+                        CHARS
+                    </span>
+                    <div class="tab-glow"></div>
+                </button>
+
+                <button onclick="switchTab(4)" id="btn-tab-4" class="tab-btn group">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i class="ph ph-film-strip text-lg"></i>
+                        SCENES
+                    </span>
+                    <div class="tab-glow"></div>
+                </button>
+
+                <button onclick="switchTab(5)" id="btn-tab-5" class="tab-btn group">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i class="ph ph-video-camera text-lg"></i>
+                        VIDEO
+                    </span>
+                    <div class="tab-glow"></div>
+                </button>
+
+            </div>
         </nav>
 
-        <!-- MAIN CONTENT AREA -->
-        <main id="app-content" class="min-h-[60vh] relative transition-all duration-300">
-            
-            <!-- ================= TAB 1: STORY ================= -->
-            <section id="tab-content-1" class="tab-section animate-fade-in">
-                <div class="max-w-4xl mx-auto space-y-6">
-                    <!-- Header Tab 1 -->
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <h2 class="text-2xl font-bold text-white">Konsep Cerita</h2>
-                            <p class="text-xs text-gray-400">Tulis ide kasarmu, AI akan mengubahnya menjadi Naskah Master.</p>
-                        </div>
-                        
-                        <!-- Toggle Dialog -->
-                        <div class="flex items-center gap-3 bg-black/40 p-2 rounded-lg border border-white/10">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase">Dialog Mode</span>
-                            <button id="toggle-dialog" class="w-10 h-5 rounded-full bg-gray-600 relative transition-colors duration-300">
-                                <div class="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform duration-300"></div>
-                            </button>
-                            <span id="dialog-status-text" class="text-[10px] font-bold text-gray-500">OFF</span>
-                        </div>
-                    </div>
-
-                    <!-- Input Area -->
-                    <div class="relative group">
-                        <label class="text-xs text-accent font-bold mb-1 block">IDE KASAR / KONSEP:</label>
-                        <textarea id="story-input" 
-                            class="w-full h-32 bg-black/30 text-gray-300 p-4 rounded-xl border border-white/10 focus:border-accent focus:outline-none resize-none text-sm transition-all"
-                            placeholder="Contoh: Jono si cyborg ketemu Siti di pasar gelap..."></textarea>
-                    </div>
-
-                    <!-- Result Area (Hidden by default) -->
-                    <div id="story-result-area" class="hidden space-y-4 animate-fade-in">
-                        <div class="glass-panel p-6 rounded-xl border-l-4 border-accent">
-                            <div class="flex justify-between items-center mb-4">
-                                <label class="text-xs text-white font-bold uppercase tracking-widest">
-                                    <i class="ph ph-scroll"></i> Master Script (AI Generated)
-                                </label>
-                                <button id="btn-copy-story" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-gray-300 transition-colors">
-                                    <i class="ph ph-copy"></i> Copy
-                                </button>
-                            </div>
-                            <div id="final-story-text" class="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap font-serif"></div>
-                        </div>
-
-                        <!-- Character Tags -->
-                        <div id="char-tags-container" class="glass-panel p-4 rounded-xl">
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">
-                                <i class="ph ph-users"></i> Karakter Terdeteksi
-                            </label>
-                            <div id="tags-list" class="flex flex-wrap gap-2"></div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="flex justify-end pt-4 gap-3">
-                        <button id="btn-generate-story" class="btn-neon px-8 py-3 rounded-xl font-bold flex items-center gap-2">
-                            <i class="ph ph-magic-wand text-lg"></i>
-                            <span>Generate Story & Characters</span>
-                        </button>
-
-                        <button id="btn-next-to-style" class="hidden btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200">
-                            <span>Lanjut ke Style</span>
-                            <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
+        <!-- CONTENT AREA -->
+        <main id="app-content" class="flex-grow relative transition-all duration-500 ease-out">
+            <!-- Placeholder Content (Biar gak kosong pas pertama load) -->
+            <div class="glass-panel rounded-3xl p-10 text-center border border-dashed border-white/10 min-h-[400px] flex flex-col items-center justify-center animate-fade-in-up">
+                <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6 animate-pulse-glow">
+                    <i class="ph ph-sparkle text-4xl text-accent"></i>
                 </div>
-            </section>
-
-            <!-- ================= TAB 2: STYLE ================= -->
-            <section id="tab-content-2" class="tab-section hidden animate-fade-in">
-                <div class="max-w-4xl mx-auto space-y-6 pb-10">
-                    <div class="flex items-center gap-3 mb-2">
-                        <h2 class="text-2xl font-bold text-white">Visual Style</h2>
-                        <span class="px-2 py-0.5 rounded text-[10px] bg-accent/20 text-accent border border-accent/20">Config Phase</span>
-                    </div>
-                
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Kolom Kiri: Input Gambar -->
-                        <div class="glass-panel p-6 rounded-2xl flex flex-col h-full">
-                            <label class="block text-accent text-xs font-bold mb-4 uppercase tracking-wider">
-                                1. Referensi Gambar (Source)
-                            </label>
-                            
-                            <div id="upload-area" class="relative border-2 border-dashed border-white/10 hover:border-accent/50 rounded-xl bg-black/20 transition-all group cursor-pointer h-48 flex flex-col items-center justify-center overflow-hidden">
-                                <input type="file" id="style-file-input" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
-                                
-                                <div id="upload-placeholder" class="text-center p-4 transition-opacity duration-300">
-                                    <i class="ph ph-upload-simple text-3xl text-gray-500 group-hover:text-accent mb-2"></i>
-                                    <p class="text-xs text-gray-400">Klik pilih file gambar</p>
-                                </div>
-                                <img id="style-image-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity">
-                            </div>
-                
-                            <div class="mt-4 flex items-center gap-2">
-                                <div class="text-[10px] text-gray-500 font-bold whitespace-nowrap">ATAU LINK:</div>
-                                <input type="text" id="style-url-input" placeholder="https://..." class="input-dark w-full rounded-lg px-3 py-2 text-xs">
-                            </div>
-                
-                            <button id="btn-analyze-style" class="w-full mt-4 bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-lg transition-all text-xs font-bold border border-white/10 flex justify-center items-center gap-2">
-                                <i class="ph ph-scan"></i> Analisa Style
-                            </button>
-                            <p id="style-status-text" class="text-[10px] text-gray-500 mt-3 text-center min-h-[1.5em]"></p>
-                        </div>
-                
-                        <!-- Kolom Kanan: Config -->
-                        <div class="space-y-4">
-                            <!-- Aspect Ratio -->
-                            <div class="glass-panel p-5 rounded-2xl">
-                                <label class="block text-white text-xs font-bold mb-3 uppercase tracking-wider">
-                                    <i class="ph ph-frame-corners text-accent"></i> Aspect Ratio
-                                </label>
-                                <div class="grid grid-cols-3 gap-2" id="ratio-container">
-                                    <button data-ratio="1:1" class="ratio-btn active bg-accent/20 border border-accent text-white py-2 rounded-lg text-xs font-bold hover:bg-accent/30 transition-all">1:1</button>
-                                    <button data-ratio="16:9" class="ratio-btn bg-black/30 border border-white/10 text-gray-400 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-all">16:9</button>
-                                    <button data-ratio="9:16" class="ratio-btn bg-black/30 border border-white/10 text-gray-400 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-all">9:16</button>
-                                </div>
-                            </div>
-                
-                            <!-- Quality Toggle -->
-                            <div class="glass-panel p-5 rounded-2xl flex justify-between items-center">
-                                <div>
-                                    <h3 class="text-white font-bold text-sm flex items-center gap-2">
-                                        <i class="ph ph-crown text-yellow-500"></i> Pro Quality (4K)
-                                    </h3>
-                                    <p class="text-[10px] text-gray-400 mt-0.5">Model: seedream-pro / flux-pro</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="toggle-quality" class="sr-only peer" checked> 
-                                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                                </label>
-                            </div>
-                
-                            <!-- Master Prompt -->
-                            <div class="glass-panel p-5 rounded-2xl">
-                                <label class="block text-accent text-xs font-bold mb-2 uppercase tracking-wider">Master Style Prompt</label>
-                                <textarea id="master-style-prompt" rows="4" class="input-dark w-full rounded-lg p-3 text-xs leading-relaxed resize-none" placeholder="Deskripsi style akan muncul di sini..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                
-                    <div class="flex justify-end pt-4 pb-8 relative z-50">
-                        <button id="btn-save-style" class="btn-neon px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-accent/20 cursor-pointer">
-                            <span>Simpan & Lanjut ke Karakter</span>
-                            <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ================= TAB 3: CHARACTERS ================= -->
-            <section id="tab-content-3" class="tab-section hidden animate-fade-in">
-                <div class="max-w-6xl mx-auto pb-20">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-white">Character Casting</h2>
-                            <p class="text-xs text-gray-400">Visual karakter dari Cerita & Style.</p>
-                        </div>
-                        <button id="btn-generate-all-chars" class="btn-neon px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                            <i class="ph ph-lightning"></i> Generate All
-                        </button>
-                    </div>
-                
-                    <!-- Grid Kartu Karakter -->
-                    <div id="char-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <!-- Kartu akan di-inject via JS -->
-                        <div class="col-span-full text-center py-10 text-gray-500 border border-dashed border-white/10 rounded-xl">
-                            Belum ada karakter. Generate cerita dulu di Tab 1.
-                        </div>
-                    </div>
-                
-                    <div class="flex justify-end pt-8">
-                        <button id="btn-next-to-scenes" class="btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2">
-                            <span>Lanjut ke Scenes</span>
-                            <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ================= TAB 4: SCENES ================= -->
-            <section id="tab-content-4" class="tab-section hidden animate-fade-in">
-                <div class="max-w-6xl mx-auto pb-20">
-                    <!-- Header Controls -->
-                    <div class="glass-panel p-4 rounded-xl mb-6 flex flex-wrap gap-4 items-center justify-between border-l-4 border-accent">
-                        <div>
-                            <h2 class="text-xl font-bold text-white">Scene Director</h2>
-                            <p class="text-xs text-gray-400">Pecah cerita jadi storyboard visual.</p>
-                        </div>
-                        
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10">
-                                <label class="text-[10px] uppercase font-bold text-gray-400">Jumlah Scene:</label>
-                                <input type="number" id="scene-count-input" value="6" min="1" max="20" class="bg-transparent text-white font-bold w-10 text-center focus:outline-none border-b border-accent">
-                            </div>
-                            
-                            <button id="btn-generate-scenes" class="btn-neon px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                                <i class="ph ph-film-strip"></i> Generate Storyboard
-                            </button>
-                        </div>
-                    </div>
-                
-                    <!-- Container Scene -->
-                    <div id="scenes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="col-span-full text-center py-20 bg-white/5 rounded-xl border border-dashed border-white/10 text-gray-500">
-                            <i class="ph ph-film-slate text-4xl mb-2 opacity-50"></i>
-                            <p class="text-sm">Klik Generate buat mulai bikin adegan.</p>
-                        </div>
-                    </div>
-                
-                    <div class="flex justify-end pt-8">
-                        <button id="btn-next-to-video" class="btn-neon bg-white text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2">
-                            <span>Lanjut ke Video</span>
-                            <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ================= TAB 5: VIDEO ================= -->
-            <section id="tab-content-5" class="tab-section hidden animate-fade-in">
-                <div class="max-w-4xl mx-auto text-center py-20">
-                    <div class="glass-panel p-10 rounded-2xl border border-white/10">
-                        <i class="ph ph-video-camera text-5xl text-accent mb-4"></i>
-                        <h2 class="text-2xl font-bold text-white mb-2">Video Generation</h2>
-                        <p class="text-gray-400 mb-6">Fitur ini akan menggunakan model <code>veo</code> atau <code>seedance</code> dari Pollinations.</p>
-                        <button class="btn-neon px-6 py-2 rounded-lg opacity-50 cursor-not-allowed">Coming Soon</button>
-                    </div>
-                </div>
-            </section>
-
+                <h2 class="text-2xl font-bold text-white mb-2">Ready to Create?</h2>
+                <p class="text-gray-400 max-w-md mx-auto">Pilih tab <span class="text-accent font-bold">STORY</span> untuk mulai menulis naskah mastermu.</p>
+            </div>
         </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-10 py-6 text-center border-t border-white/5">
+            <p class="text-[10px] text-gray-600 uppercase tracking-widest">Powered by Pollinations AI • MrG Engine v2.0</p>
+        </footer>
+
     </div>
 
-    <!-- MODAL SETTINGS (GLOBAL) -->
-    <div id="settings-modal" class="fixed inset-0 z-[100] hidden">
-        <div id="settings-backdrop" class="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-2xl p-8 shadow-2xl transform transition-all scale-100">
-            <div class="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-                <h2 class="text-xl font-bold text-white flex items-center gap-3">
-                    <i class="ph ph-sliders-horizontal text-accent"></i> 
-                    API Configuration
+    <!-- SETTINGS MODAL (Refined) -->
+    <div id="settings-modal" class="fixed inset-0 z-[100] hidden transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="toggleSettings()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-3xl p-8 shadow-[0_0_50px_rgba(99,102,241,0.2)] transform transition-all scale-95">
+            
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-display font-bold text-white flex items-center gap-3">
+                    <i class="ph ph-faders text-accent"></i> 
+                    System Config
                 </h2>
-                <button id="btn-close-settings" class="text-gray-400 hover:text-white transition-colors">
-                    <i class="ph ph-x text-xl"></i>
+                <button onclick="toggleSettings()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <i class="ph ph-x text-gray-400"></i>
                 </button>
             </div>
 
-            <div class="space-y-5">
-                <!-- Pollinations Key -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Pollinations API Key (Optional)</label>
-                    <div class="relative">
-                        <i class="ph ph-robot absolute left-3 top-3.5 text-gray-500"></i>
-                        <input type="password" id="input-pollinations-key" placeholder="Kosong = Mode Gratis (Slower)" 
-                            class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-all">
-                    </div>
-                    <p class="text-[10px] text-gray-500 mt-1">Dapatkan di enter.pollinations.ai untuk speed lebih cepat & model private.</p>
+            <!-- Isi form settings lu disini (sama kayak sebelumnya tapi styling dirapihin dikit) -->
+            <div class="space-y-6">
+                <div class="group">
+                    <label class="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 block">API Key</label>
+                    <input type="password" class="input-neon w-full" placeholder="Pollinations Key (Optional)">
                 </div>
-
-                <!-- ImgBB Key (Buat upload referensi style) -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">ImgBB API Key (Wajib untuk Upload)</label>
-                    <div class="relative">
-                        <i class="ph ph-image absolute left-3 top-3.5 text-gray-500"></i>
-                        <input type="password" id="input-imgbb-key" placeholder="Paste key ImgBB..." 
-                            class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-all">
-                    </div>
-                </div>
-
-                <button id="btn-save-settings" class="w-full btn-neon font-bold py-3 rounded-xl mt-2 flex items-center justify-center gap-2">
-                    <i class="ph ph-floppy-disk text-lg"></i>
-                    Simpan Konfigurasi
-                </button>
-
-                <div class="pt-4 border-t border-white/10 mt-4">
-                    <button id="btn-reset-project" class="w-full py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <i class="ph ph-trash"></i> Hapus Data Project (Reset)
-                    </button>
-                </div>
+                <button class="btn-primary w-full">Save Configuration</button>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPTS -->
-    <!-- 1. CONFIG & STATE (LOAD DULUAN - WAJIB) -->
-    <!-- Ini biar pas web dibuka, dia baca dulu data lama dari localStorage -->
-    <script src="js/state.js"></script> 
-    
-    <!-- 2. API HANDLING -->
-    <script src="js/api.js"></script>
-    
-    <!-- 3. MAIN LOGIC (Global UI & Tab Switching) -->
+    <!-- SCRIPT PLACEHOLDER -->
     <script src="js/main.js"></script>
-
-    <!-- 4. MODULAR TABS LOGIC -->
-    <script src="js/tabs/tab1.js"></script>
-    <script src="js/tabs/tab2.js"></script>
-    <script src="js/tabs/tab3.js"></script>
-    <script src="js/tabs/tab4.js"></script>
-    <script src="js/tabs/tab5.js"></script>
 </body>
-</html>
+    </html>
