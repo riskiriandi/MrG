@@ -1,57 +1,75 @@
 // js/state.js
 
-const initialState = {
-    // Tab 1: Story
+// Default Data Project (Isi Cerita, Gambar, dll)
+const defaultProjectState = {
     story: {
         rawIdea: "",
+        useDialog: true, // Toggle Dialog Mode
         title: "",
         synopsis: "",
-        scripts: [], // Array of scenes text
+        scripts: [] 
     },
-    
-    // Tab 2: Style
     style: {
-        mode: "preset", // 'preset' or 'upload'
-        selectedRatio: "16:9",
-        masterPrompt: "Cinematic lighting, 8k resolution, unreal engine 5 render, hyperrealistic",
-        referenceImage: null
+        ratio: "16:9",
+        prompt: "",
+        refImage: null
     },
-
-    // Tab 3: Characters
-    characters: [], // Array of objects { name, desc, imgUrl }
-
-    // Tab 4: Scenes
-    scenes: [], // Array of objects { id, prompt, imgUrl }
-
-    // System
-    config: {
-        apiKey: localStorage.getItem('mrg_api_key') || '',
-        isPremium: false
-    }
+    characters: [], // { name, desc, visual, seed, img }
+    scenes: []      // { id, text, prompt, img, seed }
 };
 
-// Handler biar kita tau kapan state berubah (Debugging enak)
+// Default Config (API Key) - Terpisah!
+const defaultConfig = {
+    pollinationsKey: "",
+    imgbbKey: ""
+};
+
+// Load Data dari LocalStorage
+const loadState = () => {
+    const savedProject = localStorage.getItem('mrg_project_data');
+    const savedConfig = localStorage.getItem('mrg_config_data');
+
+    return {
+        project: savedProject ? JSON.parse(savedProject) : JSON.parse(JSON.stringify(defaultProjectState)),
+        config: savedConfig ? JSON.parse(savedConfig) : {...defaultConfig}
+    };
+};
+
+// Inisialisasi Proxy (Biar otomatis save pas data berubah)
+const data = loadState();
+
 const handler = {
     set(target, property, value) {
-        console.log(`[STATE UPDATE] ${property} changed to:`, value);
         target[property] = value;
+        
+        // Auto Save ke LocalStorage
+        if (target === window.appState.project) {
+            localStorage.setItem('mrg_project_data', JSON.stringify(target));
+        } else if (target === window.appState.config) {
+            localStorage.setItem('mrg_config_data', JSON.stringify(target));
+        }
         return true;
     }
 };
 
-// Export Global State
-window.appState = new Proxy(initialState, handler);
-
-// Fungsi Helper buat Simpan/Load
-window.saveProject = () => {
-    localStorage.setItem('mrg_project_backup', JSON.stringify(window.appState));
-    showToast("Project saved locally!", "success");
+window.appState = {
+    project: new Proxy(data.project, handler),
+    config: new Proxy(data.config, handler)
 };
 
-window.loadProject = () => {
-    const data = localStorage.getItem('mrg_project_backup');
-    if (data) {
-        Object.assign(window.appState, JSON.parse(data));
-        showToast("Project loaded!", "success");
-    }
+// FUNGSI RESET (Sesuai Request Lu)
+window.resetProjectData = () => {
+    // Timpa project data dengan default, TAPI config jangan disentuh
+    Object.assign(window.appState.project, JSON.parse(JSON.stringify(defaultProjectState)));
+    localStorage.setItem('mrg_project_data', JSON.stringify(window.appState.project));
+    
+    // Refresh halaman biar bersih
+    window.location.reload();
+};
+
+// FUNGSI SAVE API KEY
+window.saveSettings = (polliKey, imgbbKey) => {
+    window.appState.config.pollinationsKey = polliKey;
+    window.appState.config.imgbbKey = imgbbKey;
+    alert("Konfigurasi Tersimpan! (Aman walau di-reset)");
 };
