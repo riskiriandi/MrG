@@ -146,11 +146,16 @@
     </div>
 
     <!-- SETTINGS MODAL (Refined) -->
-    <div id="settings-modal" class="fixed inset-0 z-[100] hidden transition-opacity duration-300 opacity-0 pointer-events-none">
+    <!-- SETTINGS MODAL (FIXED) -->
+    <div id="settings-modal" class="fixed inset-0 z-[100] hidden transition-all duration-300 opacity-0 pointer-events-none">
+        <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="toggleSettings()"></div>
+        
+        <!-- Content -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-3xl p-8 shadow-[0_0_50px_rgba(99,102,241,0.2)] transform transition-all scale-95">
             
-            <div class="flex justify-between items-center mb-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
                 <h2 class="text-xl font-display font-bold text-white flex items-center gap-3">
                     <i class="ph ph-faders text-accent"></i> 
                     System Config
@@ -160,13 +165,44 @@
                 </button>
             </div>
 
-            <!-- Isi form settings lu disini (sama kayak sebelumnya tapi styling dirapihin dikit) -->
-            <div class="space-y-6">
+            <!-- Form Inputs -->
+            <div class="space-y-5">
+                
+                <!-- ImgBB Input (WAJIB ADA) -->
                 <div class="group">
-                    <label class="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 block">API Key</label>
-                    <input type="password" class="input-neon w-full" placeholder="Pollinations Key (Optional)">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-2">
+                        <i class="ph ph-image"></i> ImgBB API Key
+                    </label>
+                    <input type="password" id="input-imgbb-key" class="input-neon w-full text-sm" placeholder="Paste ImgBB Key here...">
+                    <p class="text-[10px] text-gray-600 mt-1">Dibutuhkan untuk fitur Style Analyzer (Tab 2).</p>
                 </div>
-                <button class="btn-primary w-full">Save Configuration</button>
+
+                <!-- Pollinations Input -->
+                <div class="group">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-2">
+                        <i class="ph ph-robot"></i> Pollinations Key (Optional)
+                    </label>
+                    <input type="password" id="input-polli-key" class="input-neon w-full text-sm" placeholder="Leave empty for free tier...">
+                </div>
+
+                <!-- Save Button -->
+                <button onclick="handleSaveSettings()" class="btn-primary w-full flex justify-center items-center gap-2 mt-4">
+                    <i class="ph ph-floppy-disk"></i> Save Configuration
+                </button>
+
+                <!-- Divider -->
+                <div class="h-px bg-white/10 my-4"></div>
+
+                <!-- DANGER ZONE: RESET -->
+                <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                    <h4 class="text-red-400 text-xs font-bold uppercase mb-2 flex items-center gap-2">
+                        <i class="ph ph-warning"></i> Danger Zone
+                    </h4>
+                    <p class="text-[10px] text-gray-400 mb-3">Hapus semua data cerita, karakter, dan scene. API Key tidak akan terhapus.</p>
+                    <button onclick="window.resetProjectData()" class="w-full py-2 rounded-lg bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2">
+                        <i class="ph ph-trash"></i> RESET PROJECT DATA
+                    </button>
+                </div>
             </div>
         </div>
     </div>
