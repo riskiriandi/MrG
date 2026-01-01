@@ -1,22 +1,37 @@
 // js/modules/styleModule.js
 
 window.initStyleModule = () => {
-    // Load data lama kalau ada
     const savedPrompt = window.appState.project.style.prompt;
     const savedRatio = window.appState.project.style.ratio;
     
     if(document.getElementById('style-prompt')) {
-        document.getElementById('style-prompt').value = savedPrompt;
+        document.getElementById('style-prompt').value = savedPrompt || "";
         setRatio(savedRatio || '16:9');
     }
 };
 
-// 1. Handle Upload
+// Handle URL Input Manual
+window.handleStyleUrl = async () => {
+    const url = document.getElementById('style-url-input').value;
+    if(!url) return showToast("Masukin link gambarnya dulu!", "error");
+
+    // Tampilkan Preview
+    const img = document.getElementById('style-preview-img');
+    const placeholder = document.getElementById('upload-placeholder');
+    img.src = url;
+    img.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+
+    // Analisa
+    analyzeImage(url);
+};
+
+// Handle Upload File
 window.handleStyleUpload = async (input) => {
     const file = input.files[0];
     if (!file) return;
 
-    // Preview Gambar
+    // Preview
     const reader = new FileReader();
     reader.onload = (e) => {
         const img = document.getElementById('style-preview-img');
@@ -27,36 +42,37 @@ window.handleStyleUpload = async (input) => {
     };
     reader.readAsDataURL(file);
 
-    // Proses Upload & Analisa
-    const status = document.getElementById('upload-status');
-    status.innerText = "Uploading to ImgBB...";
-    status.className = "text-center text-[10px] text-yellow-400 h-4 animate-pulse";
-
+    // Upload ke ImgBB dulu
     try {
-        // A. Upload ke ImgBB (Pake fungsi dari api.js)
+        showToast("Uploading to ImgBB...", "info");
         const imgUrl = await window.uploadToImgBB(file);
-        
-        status.innerText = "Analyzing Style with AI Vision...";
-        
-        // B. Analisa Style (Pake fungsi dari api.js)
-        const styleDescription = await window.analyzeStyle(imgUrl);
-        
-        // C. Update UI & State
-        document.getElementById('style-prompt').value = styleDescription;
-        window.appState.project.style.prompt = styleDescription;
-        window.appState.project.style.refImage = imgUrl;
-
-        status.innerText = "Style Analyzed Successfully!";
-        status.className = "text-center text-[10px] text-green-400 h-4";
-        showToast("Style berhasil diekstrak!", "success");
-
-    } catch (error) {
-        console.error(error);
-        status.innerText = "Error: " + error.message;
-        status.className = "text-center text-[10px] text-red-400 h-4";
-        showToast("Gagal analisa gambar. Cek API Key.", "error");
+        analyzeImage(imgUrl);
+    } catch (e) {
+        showToast("Gagal Upload: " + e.message, "error");
     }
 };
+
+// Fungsi Analisa (Dipake oleh kedua metode di atas)
+async function analyzeImage(url) {
+    const status = document.getElementById('upload-status');
+    status.innerText = "Analyzing Style...";
+    
+    try {
+        const styleDescription = await window.analyzeStyle(url);
+        
+        document.getElementById('style-prompt').value = styleDescription;
+        window.appState.project.style.prompt = styleDescription;
+        window.appState.project.style.refImage = url;
+
+        status.innerText = "Done!";
+        showToast("Style berhasil diambil!", "success");
+    } catch (e) {
+        status.innerText = "Error Analyzing";
+        showToast("Gagal analisa style.", "error");
+    }
+}
+
+// ... (Fungsi setRatio sama kayak sebelumnya) ...
 
 // 2. Set Ratio
 window.setRatio = (ratio) => {
