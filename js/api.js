@@ -21,12 +21,33 @@ window.uploadToImgBB = async (file) => {
 };
 
 // 2. Vision Analysis (Khusus Style)
+// js/api.js (UPDATE BAGIAN ANALYZE STYLE)
+
 window.analyzeStyle = async (imageUrl) => {
-    const prompt = "Analyze the ART STYLE, LIGHTING, COLOR PALETTE, and COMPOSITION of this image. Do NOT describe the characters or subject matter. Focus on keywords for an AI image generator (e.g., 'cyberpunk, neon lighting, unreal engine 5, cinematic grain'). Output ONLY the keywords.";
+    // PROMPT KHUSUS: FOKUS KE TEKNIK & MEDIUM, BUKAN OBJEK
+    const prompt = `
+        Analyze the ART MEDIUM, RENDERING STYLE, and VISUAL AESTHETIC of this image.
+        
+        CRITICAL INSTRUCTIONS:
+        1. DO NOT describe the subject matter (e.g., do not say "a forest", "a cat", "a person").
+        2. FOCUS ONLY ON:
+           - The Medium (e.g., 3D Render, Oil Painting, Sketch, Anime, etc).
+           - The Engine/Look (e.g., Unreal Engine 5, Octane Render, Disney Pixar style, Ghibli, etc).
+           - The Lighting/Vibe (e.g., Cinematic lighting, Volumetric, Soft glow, Dark fantasy, etc).
+           - The Quality (e.g., High-fidelity, Hyper-realistic, Stylized, etc).
+        
+        EXAMPLE OUTPUT:
+        "High-fidelity Photorealistic 3D Animation, similar to Unreal Engine 5 cinematic renders. Blends stylized character design with hyper-realistic environments, volumetric lighting, and soft cinematic depth of field."
+    `;
     
-    const res = await fetch(`${API_BASE}openai`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+    // Pastikan API Key ada
+    const apiKey = window.appState.config.pollinationsKey;
+    
+    // Kita pake endpoint Chat Completion yang support Vision (gpt-4o atau gemini)
+    // Note: Kalau user free, ini mungkin agak tricky, tapi kita coba pake 'openai' default poll
+    const res = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             messages: [
                 { role: "user", content: [
@@ -34,9 +55,18 @@ window.analyzeStyle = async (imageUrl) => {
                     { type: "image_url", image_url: { url: imageUrl } }
                 ]}
             ],
-            model: "openai" // Vision capable
+            model: "openai", // Model Vision
+            json: false // Kita butuh teks deskripsi biasa
         })
     });
+    
+    if(!res.ok) throw new Error("Gagal analisa gambar.");
+    
+    const data = await res.text();
+    return data.trim(); // Balikin teks deskripsi style
+};
+
+// ... (Sisa fungsi uploadToImgBB dan generateImage biarin aja) ...
     
     const data = await res.json();
     return data.choices[0].message.content;
