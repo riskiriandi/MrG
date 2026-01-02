@@ -2,27 +2,6 @@
 
 const API_BASE = "https://text.pollinations.ai/";
 
-// 1. Upload ke ImgBB
-window.uploadToImgBB = async (file) => {
-    const apiKey = window.appState.config.imgbbKey;
-    if (!apiKey) throw new Error("ImgBB API Key belum diisi di Settings!");
-
-    const formData = new FormData();
-    formData.append("image", file);
-
-    const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-        method: "POST",
-        body: formData
-    });
-    
-    const data = await res.json();
-    if (!data.success) throw new Error("Gagal upload gambar.");
-    return data.data.url;
-};
-
-// 2. Vision Analysis (Khusus Style)
-// js/api.js (UPDATE BAGIAN ANALYZE STYLE)
-
 window.analyzeStyle = async (imageUrl) => {
     // PROMPT KHUSUS: FOKUS KE TEKNIK & MEDIUM, BUKAN OBJEK
     const prompt = `
@@ -65,13 +44,25 @@ window.analyzeStyle = async (imageUrl) => {
     const data = await res.text();
     return data.trim(); // Balikin teks deskripsi style
 };
+// 1. Upload ke ImgBB
+window.uploadToImgBB = async (file) => {
+    const apiKey = window.appState.config.imgbbKey;
+    if (!apiKey) throw new Error("ImgBB API Key belum diisi di Settings!");
 
-// ... (Sisa fungsi uploadToImgBB dan generateImage biarin aja) ...
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: "POST",
+        body: formData
+    });
     
     const data = await res.json();
-    return data.choices[0].message.content;
+    if (!data.success) throw new Error("Gagal upload gambar.");
+    return data.data.url;
 };
 
+// ... (Sisa fungsi uploadToImgBB dan generateImage biarin aja) ...
 // 3. Generate Image (Support Seed)
 window.generateImage = (prompt, width, height, seed) => {
     // Kalau seed gak ada, random
