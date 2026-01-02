@@ -129,7 +129,7 @@ window.generateStory = async () => {
                     { role: 'system', content: 'You are a creative JSON generator.' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'openai', // Model terbaik buat JSON & Kreativitas
+                model: 'claude', // Model terbaik buat JSON & Kreativitas
                 json: true,
                 seed: Math.floor(Math.random() * 10000)
             })
