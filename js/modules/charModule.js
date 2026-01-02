@@ -122,31 +122,27 @@ window.resetChar = (index, event) => {
 // 5. GENERATE KARAKTER (CORE LOGIC)
 window.generateChar = async (index) => {
     const char = window.appState.project.characters[index];
-    const style = window.appState.project.style.prompt || "Cinematic, Realistic, 8k";
-    const ratio = window.appState.project.style.ratio || "16:9";
     
-    // Ambil Model dari Dropdown
+    // 1. AMBIL STYLE DARI TAB 2
+    // Kalau user kosongin Tab 2, kita kasih default minimalis biar gak error
+    const stylePrompt = window.appState.project.style.prompt || "neutral lighting, high quality"; 
+    
+    // 2. AMBIL RATIO DARI TAB 2
+    const ratio = window.appState.project.style.ratio || "16:9";
+
+    // ... (kode dropdown model tetap sama) ...
     const dropdown = document.getElementById(`model-char-${index}`);
     const selectedModel = dropdown ? dropdown.value : 'seedream';
-    
-    // Simpan model ke state
     window.appState.project.characters[index].model = selectedModel;
 
-    // Tentukan Resolusi Berdasarkan Ratio Tab 2
+    // ... (kode resolusi tetap sama) ...
     let width = 1024, height = 1024;
     if (ratio === '16:9') { width = 1280; height = 720; }
     else if (ratio === '9:16') { width = 720; height = 1280; }
     
-    // === PROMPT FORMULA (CUTE/PIXAR FIX) ===
-    // Kalau deskripsi mengandung "cat" atau "animal", kita tambah keyword biar gak serem
-    let vibePrompt = "";
-    if(char.desc.toLowerCase().includes('cat') || char.desc.toLowerCase().includes('animal')) {
-        vibePrompt = "cute, expressive face, soft lighting, pixar style 3d render, friendly appearance,";
-    }
-
-    // Prompt Final
-    const finalPrompt = `Full body shot of ${char.name}, ${char.desc}, ${vibePrompt} standing pose, neutral plain background, ${style}, masterpiece, best quality, 8k uhd`;
-
+    // 3. RUMUS PROMPT FINAL (GABUNGAN)
+    // Format: [Pose Wajib] + [Fisik Tab 1] + [Style Tab 2]
+    const finalPrompt = `Full body shot of ${char.name}, ${char.desc}, standing pose, ${stylePrompt}`;
     // Update UI Button jadi Loading
     const btn = document.querySelector(`button[onclick="generateChar(${index})"]`);
     if(btn) {
