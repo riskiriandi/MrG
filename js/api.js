@@ -25,26 +25,17 @@ window.analyzeStyle = async (imageUrl) => {
     const apiKey = window.appState.config.pollinationsKey;
     if (!apiKey) throw new Error("Pollinations API Key wajib diisi buat fitur Vision!");
 
-    // Prompt Khusus: Fokus ke Teknik & Render, BUKAN Objek.
+    // Prompt: Fokus ke Teknik & Render
     const prompt = `
-        Analyze the ART STYLE, RENDERING TECHNIQUE, and VISUAL AESTHETIC of this image.
-        
-        CRITICAL INSTRUCTIONS:
-        1. IGNORE the subject matter (do not describe the person, place, or objects).
-        2. FOCUS ONLY ON:
-           - Medium (e.g. 3D Render, Oil Painting, Digital Art, etc).
-           - Engine/Look (e.g. Unreal Engine 5, Octane Render, Pixar Style, Ghibli, etc).
-           - Lighting (e.g. Volumetric, Cinematic, Soft, Hard, etc).
-           - Quality (e.g. 8k, Hyper-realistic, Stylized, etc).
-        
-        OUTPUT FORMAT:
-        Just a single paragraph describing the style keywords.
-        Example: "High-fidelity 3D animation style, similar to Unreal Engine 5, with volumetric lighting, soft cinematic depth of field, and hyper-realistic textures."
+        Analyze the ART STYLE of this image.
+        Focus on: Art Medium (3D/2D/Painting), Rendering Style (Unreal Engine/Pixar/Anime), Lighting, and Color Palette.
+        Do NOT describe the subject (e.g. don't say "a cat sitting").
+        Keep it concise (1 paragraph).
     `;
 
-    console.log("Analyzing Image:", imageUrl);
+    console.log("Analyzing Image URL:", imageUrl);
 
-    // Pake Endpoint Chat Completions (Support Vision)
+    // Pake Endpoint Chat Completions
     const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
         method: 'POST',
         headers: { 
@@ -52,7 +43,7 @@ window.analyzeStyle = async (imageUrl) => {
             'Authorization': `Bearer ${apiKey}` // Wajib pake Bearer Token
         },
         body: JSON.stringify({
-            model: "openai", // Model OpenAI paling bagus buat Vision
+            model: "openai-large", // WAJIB 'openai-large' atau 'gemini' buat Vision!
             messages: [
                 { 
                     role: "user", 
@@ -72,13 +63,19 @@ window.analyzeStyle = async (imageUrl) => {
     }
 
     const result = await response.json();
-    const styleDescription = result.choices[0].message.content;
     
-    console.log("Style Result:", styleDescription);
-    return styleDescription.trim();
+    // Cek apakah ada isinya
+    if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+        const styleDescription = result.choices[0].message.content;
+        console.log("Style Result:", styleDescription);
+        return styleDescription.trim();
+    } else {
+        console.error("Empty Response:", result);
+        throw new Error("AI merespon tapi tidak ada teks deskripsi.");
+    }
 };
 
-// 3. GENERATE IMAGE (Helper function, kalau butuh direct call)
+// 3. GENERATE IMAGE (Helper function)
 window.generateImage = (prompt, width, height, seed, model = 'seedream') => {
     const encodedPrompt = encodeURIComponent(prompt);
     let url = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=${model}&nologo=true`;
