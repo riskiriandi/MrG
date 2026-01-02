@@ -120,75 +120,73 @@ window.resetChar = (index, event) => {
 };
 
 // 5. GENERATE KARAKTER (CORE LOGIC)
+// js/modules/charModule.js (UPDATE BAGIAN GENERATE)
+
 window.generateChar = async (index) => {
     const char = window.appState.project.characters[index];
     
-    // 1. AMBIL STYLE DARI TAB 2
-    // Kalau user kosongin Tab 2, kita kasih default minimalis biar gak error
-    const stylePrompt = window.appState.project.style.prompt || "neutral lighting, high quality"; 
-    
-    // 2. AMBIL RATIO DARI TAB 2
-    const ratio = window.appState.project.style.ratio || "16:9";
+    // 1. AMBIL STYLE DARI TAB 2 (INI KUNCINYA)
+    // Kalau kosong, pake default minimalis
+    let stylePrompt = window.appState.project.style.prompt;
+    if (!stylePrompt || stylePrompt.length < 5) {
+        stylePrompt = "Cinematic 3D Render, High Quality, Detailed Texture";
+    }
 
-    // ... (kode dropdown model tetap sama) ...
+    // 2. AMBIL RATIO
+    const ratio = window.appState.project.style.ratio || "16:9";
+    
+    // 3. AMBIL MODEL
     const dropdown = document.getElementById(`model-char-${index}`);
     const selectedModel = dropdown ? dropdown.value : 'seedream';
     window.appState.project.characters[index].model = selectedModel;
 
-    // ... (kode resolusi tetap sama) ...
+    // 4. RESOLUSI
     let width = 1024, height = 1024;
     if (ratio === '16:9') { width = 1280; height = 720; }
     else if (ratio === '9:16') { width = 720; height = 1280; }
     
-    // 3. RUMUS PROMPT FINAL (GABUNGAN)
-    // Format: [Pose Wajib] + [Fisik Tab 1] + [Style Tab 2]
-    const finalPrompt = `Full body shot of ${char.name}, ${char.desc}, standing pose, ${stylePrompt}`;
-    // Update UI Button jadi Loading
+    // 5. RUMUS PROMPT FINAL (GABUNGAN MAUT)
+    // Format: [Subjek & Fisik (Tab 1)] + [Pose Wajib] + [Style & Render (Tab 2)]
+    const finalPrompt = `(${char.desc}), full body shot, standing pose, neutral background, ${stylePrompt}`;
+
+    // Debugging: Cek di console apakah style-nya masuk
+    console.log("GENERATING WITH PROMPT:", finalPrompt);
+
+    // UI Loading
     const btn = document.querySelector(`button[onclick="generateChar(${index})"]`);
     if(btn) {
         btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Rendering...`;
         btn.disabled = true;
     }
-    showToast(`Casting ${char.name} (${selectedModel})...`, 'info');
+    showToast(`Casting ${char.name}...`, 'info');
 
     // Construct URL
     const seed = char.seed || Math.floor(Math.random() * 1000000);
     const encodedPrompt = encodeURIComponent(finalPrompt);
     
-    // URL VIP (gen.pollinations.ai)
     let url = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=${selectedModel}&nologo=true`;
     
-    // Append API Key (WAJIB ADA DI SETTINGS)
-    const apiKey = window.appState.config.pollinationsKey;
-    if(apiKey) {
-        url += `&key=${apiKey}`;
-        console.log("🔑 API Key attached.");
-    } else {
-        console.warn("⚠️ No API Key found!");
-        showToast("Warning: API Key kosong. Model premium mungkin gagal.", "warning");
+    if(window.appState.config.pollinationsKey) {
+        url += `&key=${window.appState.config.pollinationsKey}`;
     }
 
-    console.log(`[DEBUG] Generating: ${url}`);
-
-    // Preload Image (Biar gak flicker)
-    const img = new Image();
-    img.onload = () => {
-        // Sukses
-        window.appState.project.characters[index].img = url;
+    // Fetch Image
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        
+        window.appState.project.characters[index].img = response.url;
         window.appState.project.characters[index].seed = seed;
         renderCharCards();
-        showToast(`${char.name} Ready!`, 'success');
-    };
-    img.onerror = () => {
-        // Gagal
-        console.error("Image Load Failed:", url);
-        showToast("Gagal generate. Cek API Key atau Model.", "error");
+        showToast("Berhasil!", "success");
+    } catch (error) {
+        console.error(error);
+        showToast("Gagal: " + error.message, "error");
         if(btn) {
             btn.innerHTML = `<i class="ph ph-warning"></i> Failed`;
             btn.disabled = false;
         }
-    };
-    img.src = url;
+    }
 };
 
 // 6. GENERATE ALL (LOOPING)
