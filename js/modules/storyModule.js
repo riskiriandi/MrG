@@ -90,34 +90,32 @@ window.generateStory = async () => {
         }
 
         // === B. PROMPT UTAMA ===
+        // === PROMPT BARU (FISIK MURNI & SCENE FLEKSIBEL) ===
         const prompt = `
-            ROLE: World-Class Animation Storyteller (Pixar/Ghibli Style).
-            GOAL: Turn the user's idea into a Masterpiece Story and Character Design.
-            
+            ROLE: Professional Storyteller & Character Designer.
             INPUT IDEA: "${input}"
             
             INSTRUCTIONS:
             
             1. STORYTELLING (INDONESIAN):
                ${modeInstruction}
-               - LANGUAGE: Bahasa Indonesia yang luwes, tidak kaku, dan enak dibaca.
-               - LENGTH: Create exactly ${input.toLowerCase().includes('scene') ? 'requested number of' : '3'} scenes. Min 150 words per scene.
+               - LANGUAGE: Bahasa Indonesia yang luwes dan enak dibaca.
+               - SCENES: Create the number of scenes NECESSARY for the plot. Do NOT force 3 scenes if the story needs 5. If user specifies a number, follow it.
             
             2. CHARACTER DESIGN (ENGLISH VISUALS):
-               - STYLE KEYWORDS: 3D Render, Disney Pixar style, Octane Render, 8k, Cute, Expressive, Soft Lighting.
+               - **CRITICAL:** Describe ONLY physical appearance (Clothing, Body Type, Fur/Skin Color, Accessories, Face features).
+               - **FORBIDDEN:** DO NOT include art style keywords (e.g., NO "Pixar", NO "3D", NO "Cinematic", NO "Cartoon"). That will be handled by another system.
                - LOGIC:
-                 * If input implies HUMAN -> Create a Stylized 3D Human (Pixar style).
-                 * If input implies ANIMAL -> Create an Anthropomorphic Animal (standing, clothes) but keep it CUTE/COOL.
-                 * If input implies ROBOT/ALIEN -> Create a Stylized 3D version.
-               - **IMPORTANT:** Do NOT force "Cat" if the user asks for something else. Follow the input!
-               - DETAIL: Describe clothing, fur/skin color, accessories, and body type uniquely for each character.
+                 * If input implies HUMAN -> Describe human features.
+                 * If input implies ANIMAL -> Describe Anthropomorphic features (standing, clothes) unless specified otherwise.
+               - NAMING: Invent unique names if generic.
 
             OUTPUT JSON ONLY:
             {
-                "title": "Judul Kreatif (Indo)",
-                "synopsis": "Sinopsis Menarik (Indo)",
+                "title": "Judul (Indo)",
+                "synopsis": "Sinopsis (Indo)",
                 "characters": [
-                    { "name": "Name", "desc": "Full visual prompt in English..." }
+                    { "name": "Name", "desc": "Orange tabby fur, wearing denim jacket, green eyes, tall athletic build..." } 
                 ],
                 "scenes": [
                     "Scene 1 text...",
