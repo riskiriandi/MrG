@@ -1,10 +1,11 @@
 // ============================================================
-// MODULE TAB 1: STORY WRITER (FIXED ERROR)
+// MODULE TAB 1: STORY WRITER (CREATIVE PIXAR STYLE)
 // ============================================================
 
 window.initStoryModule = () => {
     const story = window.appState.project.story;
     
+    // 1. Restore Input & Auto-save
     if(document.getElementById('story-input')) {
         document.getElementById('story-input').value = story.rawIdea || "";
         
@@ -14,6 +15,7 @@ window.initStoryModule = () => {
 
         updateDialogUI(story.useDialog);
         
+        // Render ulang kalau data sudah ada
         if(story.synopsis) {
             document.getElementById('story-result').classList.remove('hidden');
             renderStoryResult(story.title, story.synopsis, story.scripts);
@@ -22,6 +24,7 @@ window.initStoryModule = () => {
     }
 };
 
+// 2. Toggle UI Logic
 window.toggleDialogMode = () => {
     const current = window.appState.project.story.useDialog;
     window.appState.project.story.useDialog = !current;
@@ -49,87 +52,84 @@ function updateDialogUI(isOn) {
     }
 }
 
-// === GENERATE STORY (VARIABLE SCOPE FIXED) ===
+// 3. GENERATE STORY (LOGIC KREATIF)
 window.generateStory = async () => {
     const input = document.getElementById('story-input').value;
     if(!input) return showToast("Isi ide ceritanya dulu bro!", "error");
 
     const btn = document.querySelector('button[onclick="generateStory()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Meracik Cerita...`;
+    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Mengarang Cerita...`;
     btn.disabled = true;
 
     try {
         const useDialog = window.appState.project.story.useDialog;
         
-        // 1. DEKLARASI VARIABEL DI AWAL (BIAR GAK ERROR NOT DEFINED)
+        // === A. INSTRUKSI MODE ===
         let modeInstruction = "";
-        let sceneFormat = "";
-
-        // 2. ISI VARIABEL SESUAI KONDISI
         if (useDialog) {
             modeInstruction = `
-                MODE: SCRIPT / SCREENPLAY FORMAT.
-                - Use standard script format (CHARACTER NAME: "Dialogue").
-                - Include action lines.
+                - FORMAT: Naskah Film (Script).
+                - Gunakan format: NAMA KARAKTER: "Dialog..."
+                - Sertakan deskripsi aksi di antara dialog.
+                - Buat percakapan yang hidup, lucu, atau emosional (sesuai konteks).
             `;
-            sceneFormat = `Scene 1: [Location]\n(Action)\nJONO: "Dialog..."`;
         } else {
             modeInstruction = `
-                MODE: NOVEL / NARRATIVE FORMAT.
-                - DO NOT USE SCRIPT FORMAT.
-                - Write in full descriptive paragraphs.
+                - FORMAT: Cerita Novel (Narasi).
+                - JANGAN gunakan format script.
+                - Gunakan paragraf deskriptif yang indah dan mengalir.
+                - Fokus pada suasana, perasaan, dan detail visual.
             `;
-            sceneFormat = `Scene 1: [Location]\nJono menatap langit dengan cemas...`;
         }
 
-        // 3. BARU DIPAKE DI PROMPT (AMAN)
+        // === B. PROMPT UTAMA (THE PIXAR FORMULA) ===
         const prompt = `
-            ROLE: Creative Director & Character Designer.
+            ROLE: World-Class Animation Storyteller (Pixar/Ghibli Style).
+            GOAL: Turn the user's idea into a Masterpiece Story and Character Design.
+            
             INPUT IDEA: "${input}"
-            ${modeInstruction}
             
-            TASK:
-            1. Title (Indonesian).
-            2. Synopsis (Indonesian, 1 paragraph).
+            INSTRUCTIONS:
             
-            3. CHARACTERS (CRITICAL STEP):
-               - Extract names. If generic, INVENT UNIQUE NAMES.
-               - **VISUAL DESCRIPTION (English):**
-                 - **MANDATORY BASE STYLE:** "Cute anthropomorphic cat, soft fur, big expressive eyes, wearing human clothes, standing upright, friendly appearance, Pixar style 3D render."
-                 - **INSTRUCTION:** You MUST start with the Base Style above, BUT you must ADD unique physical details for each character so they look different.
-                 - **Example Logic:**
-                   * Char 1: "[Base Style], orange tabby fur, wearing a denim hiker jacket and backpack."
-                   * Char 2: "[Base Style], black and white tuxedo fur, wearing a red scarf."
-                   * Char 3: "[Base Style], calico fur, wearing a green hoodie."
+            1. STORYTELLING (INDONESIAN):
+               ${modeInstruction}
+               - LANGUAGE: Bahasa Indonesia yang luwes, tidak kaku, dan enak dibaca (seperti dongeng atau film animasi populer).
+               - LENGTH: Create exactly ${input.toLowerCase().includes('scene') ? 'requested number of' : '3'} scenes. Min 150 words per scene.
             
-            4. Scenes (Indonesian).
-               - Create exactly ${input.toLowerCase().includes('scene') ? 'requested number of' : '3'} scenes.
-               - Min. 150 words per scene.
+            2. CHARACTER DESIGN (ENGLISH VISUALS):
+               - STYLE KEYWORDS: 3D Render, Disney Pixar style, Octane Render, 8k, Cute, Expressive, Soft Lighting.
+               - LOGIC:
+                 * If input implies HUMAN -> Create a Stylized 3D Human (Pixar style).
+                 * If input implies ANIMAL -> Create an Anthropomorphic Animal (standing, clothes) but keep it CUTE/COOL.
+                 * If input implies ROBOT/ALIEN -> Create a Stylized 3D version.
+               - **IMPORTANT:** Do NOT force "Cat" if the user asks for something else. Follow the input!
+               - DETAIL: Describe clothing, fur/skin color, accessories, and body type uniquely for each character.
 
             OUTPUT JSON ONLY:
             {
-                "title": "...",
-                "synopsis": "...",
+                "title": "Judul Kreatif (Indo)",
+                "synopsis": "Sinopsis Menarik (Indo)",
                 "characters": [
-                    { "name": "Name", "desc": "Full visual prompt..." }
+                    { "name": "Name", "desc": "Full visual prompt in English..." }
                 ],
                 "scenes": [
-                    "${sceneFormat}"
+                    "Scene 1 text...",
+                    "Scene 2 text..."
                 ]
             }
         `;
 
-        // 4. API CALL
+        // === C. API CALL (OPENAI MODEL) ===
         const response = await fetch('https://text.pollinations.ai/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [
-                    { role: 'system', content: 'You are a JSON generator. Output strictly JSON.' },
+                    { role: 'system', content: 'You are a creative JSON generator.' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'openai', 
+                model: 'openai', // Model terbaik buat JSON & Kreativitas
                 json: true,
                 seed: Math.floor(Math.random() * 10000)
             })
@@ -140,7 +140,7 @@ window.generateStory = async () => {
         const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(cleanText);
 
-        // 5. SIMPAN STATE
+        // === D. SIMPAN STATE ===
         window.appState.project.story.rawIdea = input;
         window.appState.project.story.title = data.title;
         window.appState.project.story.synopsis = data.synopsis;
@@ -157,12 +157,12 @@ window.generateStory = async () => {
             }));
         }
 
-        // 6. RENDER UI
+        // === E. RENDER UI ===
         document.getElementById('story-result').classList.remove('hidden');
         renderStoryResult(data.title, data.synopsis, window.appState.project.story.scripts);
         renderExtractedChars();
         
-        showToast("Naskah & Karakter Siap!", "success");
+        showToast("Cerita Ajaib Berhasil Dibuat!", "success");
 
     } catch (error) {
         console.error(error);
@@ -173,6 +173,7 @@ window.generateStory = async () => {
     }
 };
 
+// Helper Render
 function renderStoryResult(title, synopsis, scenes) {
     const container = document.getElementById('final-story-text');
     
@@ -208,4 +209,4 @@ function renderExtractedChars() {
             <p class="text-[10px] text-gray-400 line-clamp-4 mt-1 italic leading-tight">"${c.desc}"</p>
         </div>
     `).join('');
-}
+    }
