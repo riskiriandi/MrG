@@ -1,32 +1,30 @@
-// js/modules/storyModule.js
+// ============================================================
+// MODULE TAB 1: STORY WRITER (EXPLICIT MODE VERSION)
+// ============================================================
 
 window.initStoryModule = () => {
     const story = window.appState.project.story;
     
-    // 1. RE-POPULATE DATA (Biar gak hilang pas balik tab)
-    const inputField = document.getElementById('story-input');
-    if(inputField) {
-        inputField.value = story.rawIdea || "";
+    // 1. Restore Input & Auto-save
+    if(document.getElementById('story-input')) {
+        document.getElementById('story-input').value = story.rawIdea || "";
         
-        // AUTO-SAVE SAAT NGETIK (PENTING!)
-        inputField.addEventListener('input', (e) => {
+        document.getElementById('story-input').addEventListener('input', (e) => {
             window.appState.project.story.rawIdea = e.target.value;
         });
-    }
 
-    updateDialogUI(story.useDialog);
-    
-    // Render ulang hasil kalau sudah ada
-    if(story.synopsis) {
-        document.getElementById('story-result').classList.remove('hidden');
-        document.getElementById('final-story-text').innerHTML = `
-            <h3 class="text-xl font-bold text-accent mb-4">${story.title}</h3>
-            <div class="whitespace-pre-wrap">${story.synopsis}</div>
-        `;
-        renderExtractedChars();
+        updateDialogUI(story.useDialog);
+        
+        // Render ulang kalau data sudah ada
+        if(story.synopsis) {
+            document.getElementById('story-result').classList.remove('hidden');
+            renderStoryResult(story.title, story.synopsis, story.scripts);
+            renderExtractedChars();
+        }
     }
 };
 
+// 2. Toggle UI Logic
 window.toggleDialogMode = () => {
     const current = window.appState.project.story.useDialog;
     window.appState.project.story.useDialog = !current;
@@ -54,46 +52,75 @@ function updateDialogUI(isOn) {
     }
 }
 
+// 3. GENERATE STORY (LOGIC TERPISAH)
 window.generateStory = async () => {
     const input = document.getElementById('story-input').value;
-    if(!input) return showToast("Isi dulu ide ceritanya bro!", "error");
+    if(!input) return showToast("Isi ide ceritanya dulu bro!", "error");
 
     const btn = document.querySelector('button[onclick="generateStory()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Meracik Cerita...`;
+    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Menulis Naskah...`;
     btn.disabled = true;
 
     try {
         const useDialog = window.appState.project.story.useDialog;
         
-        // === PROMPT CANGGIH (INDO STORY + ENGLISH VISUAL) ===
+        // === A. RACIK INSTRUKSI BERDASARKAN MODE ===
+        let modeInstruction = "";
+        let sceneFormat = "";
+
+        if (useDialog) {
+            // MODE ON: SCRIPT FORMAT
+            modeInstruction = `
+                MODE: SCRIPT / SCREENPLAY FORMAT.
+                - You MUST use standard script format (CHARACTER NAME: "Dialogue").
+                - Focus on interaction and spoken words.
+                - Include action lines between dialogues.
+            `;
+            sceneFormat = `Scene 1: [Location]\n(Action line)\nJONO: "Halo, apa kabar?"\nSITI: "Baik."`;
+        } else {
+            // MODE OFF: NOVEL FORMAT
+            modeInstruction = `
+                MODE: NOVEL / NARRATIVE FORMAT.
+                - CRITICAL: DO NOT USE SCRIPT FORMAT. DO NOT USE 'CHARACTER: "..."'.
+                - Write in full paragraphs.
+                - Focus on deep description, atmosphere, sensory details, and internal monologue.
+                - Describe what they say indirectly or woven into the narration.
+            `;
+            sceneFormat = `Scene 1: [Location]\nAngin berhembus kencang di puncak gunung. Jono menatap Siti dengan tatapan penuh arti, menanyakan kabarnya. Siti hanya tersenyum tipis, mengisyaratkan bahwa ia baik-baik saja meski lelah mendera.`;
+        }
+
+        // === B. PROMPT UTAMA ===
         const prompt = `
-            ROLE: Expert Screenwriter & Character Designer.
-            INPUT: "${input}"
+            ROLE: Professional Writer (Indonesian Language).
+            INPUT IDEA: "${input}"
+            
+            ${modeInstruction}
             
             TASK:
-            1. Write a Title (Indonesian).
-            2. Write a Synopsis (Indonesian, 2 paragraphs).
-            3. Extract Characters with VISUAL DESCRIPTIONS IN ENGLISH.
-            4. Create 6 Scenes (Indonesian).
-
-            CRITICAL RULES FOR CHARACTERS:
-            - **LANGUAGE**: Description ('desc') MUST be in ENGLISH (for Image Generator compatibility).
-            - **NON-HUMAN LOGIC**: If input says "Humanoid [Animal]", describe as "Anthropomorphic [Animal], standing on two legs, human-like proportions".
-            - **DETAIL**: Focus on physical traits (clothing, fur color, body type, face). NO abstract personality traits like "mata cekatan". Use literal descriptions like "sharp eyes, athletic build".
-            - **NAMING**: If generic (e.g. "3 kucing"), INVENT unique names.
-
-            OUTPUT FORMAT (JSON ONLY):
+            1. Title (Indonesian).
+            2. Synopsis (Indonesian, 1 paragraph).
+            3. Characters (Extract names + English Visuals).
+               - VISUAL STYLE: Cute, Expressive, Pixar-like 3D render style (unless user asks for horror).
+               - If input is "Humanoid Cat", describe as: "Cute anthropomorphic cat, soft fur, big expressive eyes, wearing human clothes, standing upright, friendly appearance."
+            4. Scenes (Indonesian).
+               - Create exactly ${input.toLowerCase().includes('scene') ? 'requested number of' : '3'} scenes.
+               - LENGTH: Each scene must be DETAILED (min. 150 words).
+            
+            OUTPUT JSON ONLY:
             {
-                "title": "Judul Indonesia",
-                "synopsis": "Sinopsis Indonesia...",
+                "title": "...",
+                "synopsis": "...",
                 "characters": [
-                    { "name": "Name", "desc": "Anthropomorphic cat, orange fur, wearing leather jacket, full body standing pose..." }
+                    { "name": "Name", "desc": "English visual prompt..." }
                 ],
-                "scenes": ["Scene 1...", "Scene 2..."]
+                "scenes": [
+                    "${sceneFormat}"
+                ]
             }
         `;
 
+        // === C. API CALL ===
         const response = await fetch('https://text.pollinations.ai/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -102,7 +129,7 @@ window.generateStory = async () => {
                     { role: 'system', content: 'You are a JSON generator. Output strictly JSON.' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'openai', // OpenAI paling nurut soal instruksi bahasa campuran
+                model: 'openai', 
                 json: true,
                 seed: Math.floor(Math.random() * 10000)
             })
@@ -113,7 +140,7 @@ window.generateStory = async () => {
         const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(cleanText);
 
-        // SIMPAN KE STATE
+        // === D. SIMPAN STATE ===
         window.appState.project.story.rawIdea = input;
         window.appState.project.story.title = data.title;
         window.appState.project.story.synopsis = data.synopsis;
@@ -130,14 +157,12 @@ window.generateStory = async () => {
             }));
         }
 
-        // RENDER
+        // === E. RENDER UI ===
         document.getElementById('story-result').classList.remove('hidden');
-        document.getElementById('final-story-text').innerHTML = `
-            <h3 class="text-xl font-bold text-accent mb-4">${data.title}</h3>
-            <div class="whitespace-pre-wrap">${data.synopsis}</div>
-        `;
+        renderStoryResult(data.title, data.synopsis, window.appState.project.story.scripts);
         renderExtractedChars();
-        showToast("Naskah & Karakter Siap!", "success");
+        
+        showToast("Naskah Berhasil Dibuat!", "success");
 
     } catch (error) {
         console.error(error);
@@ -147,6 +172,28 @@ window.generateStory = async () => {
         btn.disabled = false;
     }
 };
+
+// Helper Render
+function renderStoryResult(title, synopsis, scenes) {
+    const container = document.getElementById('final-story-text');
+    
+    let scenesHtml = scenes.map(s => `
+        <div class="mt-4 p-4 bg-white/5 rounded-xl border-l-2 border-accent/50">
+            <strong class="text-accent text-xs uppercase tracking-wider block mb-2">Scene ${s.id}</strong>
+            <div class="whitespace-pre-wrap text-gray-300 text-sm leading-relaxed font-serif">${s.text}</div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <h3 class="text-2xl font-bold text-white mb-3">${title}</h3>
+        <div class="bg-black/20 p-4 rounded-xl mb-6 border border-white/5">
+            <p class="text-gray-400 italic text-sm">${synopsis}</p>
+        </div>
+        <div class="space-y-4">
+            ${scenesHtml}
+        </div>
+    `;
+}
 
 function renderExtractedChars() {
     const list = document.getElementById('extracted-chars-list');
@@ -159,8 +206,7 @@ function renderExtractedChars() {
                 <div class="w-2 h-2 rounded-full bg-accent"></div>
                 <span class="font-bold text-white text-sm truncate">${c.name}</span>
             </div>
-            <!-- Tampilkan Deskripsi Inggris biar user bisa cek -->
             <p class="text-[10px] text-gray-400 line-clamp-3 mt-1 italic">"${c.desc}"</p>
         </div>
     `).join('');
-            }
+        }
