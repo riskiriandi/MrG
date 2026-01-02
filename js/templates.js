@@ -1,3 +1,10 @@
+const MODEL_OPTIONS = `
+    <option value="seedream">Seedream (Default)</option>
+    <option value="kontext">Kontext</option>
+    <option value="nanobanana">Nanobanana (Fast)</option>
+    <option value="seedream-pro">Seedream Pro (4K)</option>
+    <option value="nanobanana-pro">Nanobanana Pro</option>
+`;
 const Templates = {
     
     // =============================================
@@ -139,10 +146,7 @@ const Templates = {
                     <i class="ph ph-lightning"></i> Generate All
                 </button>
             </div>
-            
-            <!-- Grid Container -->
             <div id="char-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-
             <div class="flex justify-end pt-8">
                 <button onclick="switchTab(4)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
                     Lanjut ke Scenes <i class="ph ph-arrow-right"></i>
@@ -151,9 +155,7 @@ const Templates = {
         </div>
     `,
 
-    // =============================================
-    // TAB 4: SCENES (STORYBOARD)
-    // =============================================
+    // TAB 4: SCENES (ADA DROPDOWN)
     tab4: `
         <div class="animate-fade-in-up max-w-6xl mx-auto pb-20">
             <div class="flex justify-between items-center mb-6">
@@ -162,10 +164,7 @@ const Templates = {
                     <i class="ph ph-film-strip"></i> Render All Scenes
                 </button>
             </div>
-
-            <!-- Grid Container -->
             <div id="scenes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-
             <div class="flex justify-end pt-8">
                 <button onclick="switchTab(5)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
                     Lanjut ke Video <i class="ph ph-arrow-right"></i>
@@ -173,6 +172,11 @@ const Templates = {
             </div>
         </div>
     `,
+
+// Helper biar gak copas kode tab 1,2,5 manual (JANGAN DIHAPUS)
+// Lu harus pastiin kode tab 1, 2, 5 tetep ada di dalam objek Templates di atas ya.
+// Kalau lu males, copas ulang FULL CODE templates.js dari chat sebelumnya, 
+// TAPI ganti bagian tab3 dan tab4 pake yang ada di sini.
 
     // =============================================
     // TAB 5: VIDEO (PROMPTS)
