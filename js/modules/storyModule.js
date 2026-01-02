@@ -1,32 +1,30 @@
-// js/modules/storyModule.js
+// ============================================================
+// MODULE TAB 1: STORY WRITER (BASE STYLE + UNIQUE DETAILS)
+// ============================================================
 
 window.initStoryModule = () => {
     const story = window.appState.project.story;
     
-    // 1. RE-POPULATE DATA (Biar gak hilang pas balik tab)
-    const inputField = document.getElementById('story-input');
-    if(inputField) {
-        inputField.value = story.rawIdea || "";
+    // 1. Restore Input & Auto-save
+    if(document.getElementById('story-input')) {
+        document.getElementById('story-input').value = story.rawIdea || "";
         
-        // AUTO-SAVE SAAT NGETIK (PENTING!)
-        inputField.addEventListener('input', (e) => {
+        document.getElementById('story-input').addEventListener('input', (e) => {
             window.appState.project.story.rawIdea = e.target.value;
         });
-    }
 
-    updateDialogUI(story.useDialog);
-    
-    // Render ulang hasil kalau sudah ada
-    if(story.synopsis) {
-        document.getElementById('story-result').classList.remove('hidden');
-        document.getElementById('final-story-text').innerHTML = `
-            <h3 class="text-xl font-bold text-accent mb-4">${story.title}</h3>
-            <div class="whitespace-pre-wrap">${story.synopsis}</div>
-        `;
-        renderExtractedChars();
+        updateDialogUI(story.useDialog);
+        
+        // Render ulang kalau data sudah ada
+        if(story.synopsis) {
+            document.getElementById('story-result').classList.remove('hidden');
+            renderStoryResult(story.title, story.synopsis, story.scripts);
+            renderExtractedChars();
+        }
     }
 };
 
+// 2. Toggle UI Logic
 window.toggleDialogMode = () => {
     const current = window.appState.project.story.useDialog;
     window.appState.project.story.useDialog = !current;
@@ -54,20 +52,40 @@ function updateDialogUI(isOn) {
     }
 }
 
+// 3. GENERATE STORY (CORE LOGIC)
 window.generateStory = async () => {
     const input = document.getElementById('story-input').value;
-    if(!input) return showToast("Isi dulu ide ceritanya bro!", "error");
+    if(!input) return showToast("Isi ide ceritanya dulu bro!", "error");
 
     const btn = document.querySelector('button[onclick="generateStory()"]');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Meracik Cerita...`;
+    btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Meracik Karakter & Cerita...`;
     btn.disabled = true;
 
     try {
         const useDialog = window.appState.project.story.useDialog;
         
-        // === PROMPT CANGGIH (INDO STORY + ENGLISH VISUAL) ===
-        // === GANTI BAGIAN CONST PROMPT INI SAJA ===
+        // === A. INSTRUKSI MODE (Script vs Novel) ===
+        let modeInstruction = "";
+        let sceneFormat = "";
+
+        if (useDialog) {
+            modeInstruction = `
+                MODE: SCRIPT / SCREENPLAY FORMAT.
+                - Use standard script format (CHARACTER NAME: "Dialogue").
+                - Include action lines.
+            `;
+            sceneFormat = `Scene 1: [Location]\n(Action)\nJONO: "Dialog..."`;
+        } else {
+            modeInstruction = `
+                MODE: NOVEL / NARRATIVE FORMAT.
+                - DO NOT USE SCRIPT FORMAT.
+                - Write in full descriptive paragraphs.
+            `;
+            sceneFormat = `Scene 1: [Location]\nJono menatap langit dengan cemas...`;
+        }
+
+        // === B. PROMPT UTAMA (BASE STYLE + UNIQUE DETAILS) ===
         const prompt = `
             ROLE: Creative Director & Character Designer.
             INPUT IDEA: "${input}"
@@ -103,7 +121,8 @@ window.generateStory = async () => {
                 ]
             }
         `;
-        
+
+        // === C. API CALL ===
         const response = await fetch('https://text.pollinations.ai/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -112,7 +131,7 @@ window.generateStory = async () => {
                     { role: 'system', content: 'You are a JSON generator. Output strictly JSON.' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'openai', // OpenAI paling nurut soal instruksi bahasa campuran
+                model: 'openai', 
                 json: true,
                 seed: Math.floor(Math.random() * 10000)
             })
@@ -123,7 +142,7 @@ window.generateStory = async () => {
         const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(cleanText);
 
-        // SIMPAN KE STATE
+        // === D. SIMPAN STATE ===
         window.appState.project.story.rawIdea = input;
         window.appState.project.story.title = data.title;
         window.appState.project.story.synopsis = data.synopsis;
@@ -140,13 +159,11 @@ window.generateStory = async () => {
             }));
         }
 
-        // RENDER
+        // === E. RENDER UI ===
         document.getElementById('story-result').classList.remove('hidden');
-        document.getElementById('final-story-text').innerHTML = `
-            <h3 class="text-xl font-bold text-accent mb-4">${data.title}</h3>
-            <div class="whitespace-pre-wrap">${data.synopsis}</div>
-        `;
+        renderStoryResult(data.title, data.synopsis, window.appState.project.story.scripts);
         renderExtractedChars();
+        
         showToast("Naskah & Karakter Siap!", "success");
 
     } catch (error) {
@@ -157,6 +174,28 @@ window.generateStory = async () => {
         btn.disabled = false;
     }
 };
+
+// Helper Render
+function renderStoryResult(title, synopsis, scenes) {
+    const container = document.getElementById('final-story-text');
+    
+    let scenesHtml = scenes.map(s => `
+        <div class="mt-4 p-4 bg-white/5 rounded-xl border-l-2 border-accent/50">
+            <strong class="text-accent text-xs uppercase tracking-wider block mb-2">Scene ${s.id}</strong>
+            <div class="whitespace-pre-wrap text-gray-300 text-sm leading-relaxed font-serif">${s.text}</div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <h3 class="text-2xl font-bold text-white mb-3">${title}</h3>
+        <div class="bg-black/20 p-4 rounded-xl mb-6 border border-white/5">
+            <p class="text-gray-400 italic text-sm">${synopsis}</p>
+        </div>
+        <div class="space-y-4">
+            ${scenesHtml}
+        </div>
+    `;
+}
 
 function renderExtractedChars() {
     const list = document.getElementById('extracted-chars-list');
@@ -169,8 +208,7 @@ function renderExtractedChars() {
                 <div class="w-2 h-2 rounded-full bg-accent"></div>
                 <span class="font-bold text-white text-sm truncate">${c.name}</span>
             </div>
-            <!-- Tampilkan Deskripsi Inggris biar user bisa cek -->
-            <p class="text-[10px] text-gray-400 line-clamp-3 mt-1 italic">"${c.desc}"</p>
+            <p class="text-[10px] text-gray-400 line-clamp-4 mt-1 italic leading-tight">"${c.desc}"</p>
         </div>
     `).join('');
-                                                             }
+                }
