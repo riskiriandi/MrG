@@ -10,16 +10,14 @@ const Templates = {
     // =============================================
     // TAB 1: STORY (CERITA & KONSEP)
     // =============================================
+    // TAB 1: STORY
     tab1: `
         <div class="animate-fade-in-up max-w-5xl mx-auto space-y-6">
-            <!-- Header -->
             <div class="flex justify-between items-end border-b border-white/5 pb-4">
                 <div>
                     <h2 class="text-2xl font-display font-bold text-white">Story Concept</h2>
                     <p class="text-xs text-gray-400">AI akan mengubah ide kasar menjadi naskah terstruktur.</p>
                 </div>
-                
-                <!-- Toggle Dialog Mode -->
                 <div class="flex items-center gap-3 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Dialog Mode</span>
                     <button id="toggle-dialog" onclick="toggleDialogMode()" class="w-10 h-5 rounded-full bg-gray-600 relative transition-colors duration-300">
@@ -29,37 +27,40 @@ const Templates = {
                 </div>
             </div>
 
-            <!-- Input Area -->
             <div class="glass-panel p-6 rounded-2xl">
                 <label class="text-xs text-accent font-bold mb-2 block uppercase tracking-widest">IDE CERITA / SINOPSIS KASAR:</label>
                 <textarea id="story-input" 
                     class="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-gray-200 focus:border-accent focus:outline-none resize-none text-sm"
                     placeholder="Contoh: 3 sekawan humanoid kucing mendaki gunung merapi..."></textarea>
                 
-                <div class="flex justify-end mt-4">
+                <div class="flex flex-wrap justify-between items-center mt-4 gap-3">
+                    <!-- DROPDOWN MODEL CERITA (BARU) -->
+                    <div class="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
+                        <i class="ph ph-brain text-accent"></i>
+                        <select id="story-model-select" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                            <option value="openai">OpenAI (GPT-4o) - Best Logic</option>
+                            <option value="claude">Claude (Sonnet) - Best Story</option>
+                            <option value="gemini">Gemini (Pro) - Balanced</option>
+                        </select>
+                    </div>
+
                     <button onclick="generateStory()" class="btn-primary flex items-center gap-2 text-sm">
                         <i class="ph ph-magic-wand"></i> Generate Naskah
                     </button>
                 </div>
             </div>
 
-            <!-- Result Area -->
             <div id="story-result" class="hidden space-y-6">
                 <div class="glass-panel p-6 rounded-2xl border-l-4 border-accent">
                     <h3 class="text-sm font-bold text-white mb-2 uppercase">Master Script</h3>
                     <div id="final-story-text" class="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-mono bg-black/30 p-4 rounded-lg"></div>
                 </div>
-                
-                <!-- List Karakter Terdeteksi -->
                 <div class="glass-panel p-4 rounded-2xl">
                     <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase flex items-center gap-2">
-                        <i class="ph ph-users"></i> Karakter Terdeteksi (Auto-Extracted)
+                        <i class="ph ph-users"></i> Karakter Terdeteksi
                     </h3>
-                    <div id="extracted-chars-list" class="flex flex-wrap gap-2">
-                        <!-- Badge Karakter bakal muncul disini -->
-                    </div>
+                    <div id="extracted-chars-list" class="flex flex-wrap gap-2"></div>
                 </div>
-
                 <div class="flex justify-end pt-4">
                     <button onclick="switchTab(2)" class="btn-primary bg-white text-black hover:bg-gray-200 border-none">
                         Lanjut ke Style <i class="ph ph-arrow-right"></i>
