@@ -83,7 +83,7 @@ window.generateStory = async () => {
         } else {
             modeInstruction = `
                 - FORMAT: Cerita Novel (Narasi).
-                - JANGAN gunakan format script.
+                - Dilarang menggunakan format script.
                 - Gunakan paragraf deskriptif yang indah dan mengalir.
                 - Fokus pada suasana, perasaan, dan detail visual.
             `;
