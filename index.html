@@ -206,7 +206,26 @@
             </div>
         </div>
     </div>
-
+<!-- MODAL PREVIEW IMAGE (WAJIB ADA) -->
+<div id="image-modal" class="fixed inset-0 z-[9999] hidden transition-opacity duration-300 opacity-0 pointer-events-none">
+    <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" onclick="closeImageModal()"></div>
+    <div class="absolute inset-0 flex flex-col items-center justify-center p-4">
+        <button onclick="closeImageModal()" class="absolute top-6 right-6 text-white/50 hover:text-white transition-colors z-50">
+            <i class="ph ph-x text-4xl"></i>
+        </button>
+        <img id="modal-full-image" src="" class="max-h-[80vh] max-w-full rounded-lg shadow-2xl border border-white/10 object-contain mb-6">
+        <div class="flex items-center gap-4 bg-black/50 backdrop-blur-md p-2 rounded-2xl border border-white/10">
+            <div class="px-4 py-2 border-r border-white/10">
+                <span class="text-[10px] text-gray-400 uppercase block">Seed</span>
+                <span id="modal-seed" class="text-xs font-mono text-accent font-bold"></span>
+            </div>
+            <button id="btn-download-hd" class="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl">
+                <i class="ph ph-download-simple text-lg"></i>
+                <span>Download HD</span>
+            </button>
+        </div>
+    </div>
+    </div>
     <!-- CORE -->
 <script src="js/state.js"></script>
 <script src="js/api.js"></script>
